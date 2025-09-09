@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AfterRoundOne – Game</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;700&family=Luckiest+Guy&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <style>
+    body {
+      font-family: 'Fredoka', sans-serif;
+      background: linear-gradient(to right, #FFFDE7, #E0F2F1);
+      margin: 0;
+      text-align: center;
+      overflow-x: hidden;
+    }
+
+    .game-container {
+      max-width: 1000px;
+      margin: auto;
+      padding: 20px;
+      position: relative;
+    }
+
+    h1 {
+      font-family: 'Luckiest Guy', cursive;
+      color: #4CAF50;
+      font-size: 2.5rem;
+      text-shadow: 2px 2px #8D6E63;
+      margin-bottom: 10px;
+    }
+
+    .players-circle {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 25px;
+      margin: 30px 0;
+    }
+
+    .player-card {
+      width: 100px;
+      height: 100px;
+      border-radius: 20px;
+      background: white;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      transition: transform 0.3s;
+      position: relative;
+    }
+
+    .player-card span {
+      font-size: 1.5rem;
+      font-weight: bold;
+    }
+
+    .number-display {
+      font-size: 1.2rem;
+      color: #4CAF50;
+    }
+
+    .timer {
+      font-size: 2rem;
+      font-weight: bold;
+      margin: 20px auto;
+      background: #4CAF50;
+      color: white;
+      width: 100px;
+      padding: 10px;
+      border-radius: 10px;
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+      100% { transform: scale(1); }
+    }
+
+    .number-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .num-btn {
+      background: #8D6E63;
+      color: white;
+      font-size: 1.2rem;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .num-btn:hover {
+      background: #4CAF50;
+    }
+
+    .footer {
+      margin-top: 40px;
+      padding: 15px;
+      color: #777;
+      font-size: 0.9rem;
+    }
+
+    @media(max-width: 600px) {
+      .players-circle {
+        gap: 15px;
+      }
+      .player-card {
+        width: 80px;
+        height: 80px;
+      }
+      .num-btn {
+        padding: 8px 16px;
+        font-size: 1rem;
+      }
+    }
+
+    svg.bg-effect {
+      position: absolute;
+      top: -100px;
+      left: -100px;
+      z-index: -1;
+    }
+  </style>
+</head>
+<body>
+
+<div class="game-container">
+  <h1>Round Starts!</h1>
+  <svg class="bg-effect" width="600" height="600">
+    <circle cx="300" cy="300" r="200" fill="none" stroke="#4CAF50" stroke-width="4" stroke-dasharray="10,10">
+      <animateTransform attributeName="transform" attributeType="XML" type="rotate" from="0 300 300" to="360 300 300" dur="10s" repeatCount="indefinite"/>
+    </circle>
+  </svg>
+
+  <div class="timer" id="timer">10</div>
+
+  <div class="number-buttons" id="number-buttons">
+    <button class="num-btn" onclick="chooseNumber(1)">1</button>
+    <button class="num-btn" onclick="chooseNumber(2)">2</button>
+    <button class="num-btn" onclick="chooseNumber(3)">3</button>
+    <button class="num-btn" onclick="chooseNumber(4)">4</button>
+    <button class="num-btn" onclick="chooseNumber(5)">5</button>
+  </div>
+
+  <div class="players-circle" id="players-circle">
+    <!-- Player avatars + numbers will go here -->
+  </div>
+</div>
+
+<div class="footer">
+  © 2025 AfterRoundOne — Fun, Chaos, Strategy 🎲
+</div>
+
+<script>
+  // Dummy players for testing
+  const players = [
+    { name: "Teni", number: 9, chosen: null },
+    { name: "Gbemiga", number: 6, chosen: null },
+    { name: "Tobi", number: 7, chosen: null }
+  ];
+
+  const myName = "Gbemiga";
+  let myChoice = null;
+
+  function renderPlayers() {
+    const container = document.getElementById("players-circle");
+    container.innerHTML = "";
+    players.forEach(p => {
+      const div = document.createElement("div");
+      div.className = "player-card";
+      div.innerHTML = `
+        <span>${p.name[0].toUpperCase()}</span>
+        <div class="number-display">${p.chosen !== null ? `🎯 ${p.chosen}` : ""}</div>
+      `;
+      container.appendChild(div);
+    });
+  }
+
+  function chooseNumber(num) {
+    myChoice = num;
+    const me = players.find(p => p.name === myName);
+    if (me) me.chosen = num;
+  }
+
+  function startCountdown(seconds = 10) {
+    const timer = document.getElementById("timer");
+    let time = seconds;
+    const interval = setInterval(() => {
+      timer.textContent = time;
+      time--;
+      if (time < 0) {
+        clearInterval(interval);
+        revealChoices();
+      }
+    }, 1000);
+  }
+
+  function revealChoices() {
+    // Simulate other players choosing
+    players.forEach(p => {
+      if (p.name !== myName) {
+        p.chosen = Math.floor(Math.random() * 5) + 1;
+      }
+    });
+
+    renderPlayers();
+
+    // Animate reveal
+    gsap.from(".number-display", {
+      y: -50,
+      opacity: 0,
+      scale: 0.5,
+      stagger: 0.1,
+      duration: 0.8,
+      ease: "back.out(1.7)"
+    });
+
+    setTimeout(evaluateRound, 2500);
+  }
+
+  function evaluateRound() {
+    const total = players.reduce((sum, p) => sum + p.chosen, 0);
+    const qualifiers = players.filter(p => p.number === total);
+
+    alert(`Sum is ${total}. ${qualifiers.length ? "Qualified: " + qualifiers.map(p => p.name).join(", ") : "No one qualified!"}`);
+
+    // Mark qualifiers and prepare next round
+    players.forEach(p => p.chosen = null);
+    setTimeout(() => {
+      renderPlayers();
+      startCountdown(10);
+    }, 2000);
+  }
+
+  // Init game
+  renderPlayers();
+  startCountdown(10);
+</script>
+
+</body>
+</html>

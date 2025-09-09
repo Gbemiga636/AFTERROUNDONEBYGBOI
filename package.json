@@ -1,0 +1,24 @@
+{
+  "name": "afterroundone-oluwagboi",
+  "version": "1.0.0",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "AfterRoundOne game server",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.2",
+    "express": "^4.21.2",
+    "mongoose": "^8.18.0",
+    "socket.io": "^4.8.1"
+  },
+  "engines": {
+    "node": "18.x"
+  }
+}

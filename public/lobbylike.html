@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Lobby – AfterRoundOne</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;700&family=Luckiest+Guy&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Fredoka', sans-serif;
+      background: linear-gradient(to right, #FFFDE7, #E0F2F1);
+      padding: 20px;
+      text-align: center;
+      transition: opacity 0.8s ease;
+    }
+
+    .container {
+      max-width: 700px;
+      margin: auto;
+      padding: 20px;
+      background: rgba(255,255,255,0.2);
+      backdrop-filter: blur(12px);
+      border-radius: 20px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+    }
+
+    h1 {
+      font-family: 'Luckiest Guy', cursive;
+      color: #4CAF50;
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+      text-shadow: 2px 2px #8D6E63;
+    }
+
+    .player-list {
+      margin: 20px 0;
+      padding: 10px;
+      background: #fff;
+      border-radius: 10px;
+      text-align: left;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .player {
+      padding: 8px;
+      border-bottom: 1px solid #ddd;
+      font-weight: bold;
+    }
+
+    .chat-box {
+      margin-top: 20px;
+      text-align: left;
+    }
+
+    .chat-messages {
+      background: white;
+      border-radius: 10px;
+      padding: 10px;
+      height: 150px;
+      overflow-y: auto;
+      margin-bottom: 10px;
+      font-size: 0.9rem;
+    }
+
+    input, button {
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 1rem;
+    }
+
+    .chat-input {
+      display: flex;
+      gap: 10px;
+    }
+
+    .chat-input input {
+      flex: 1;
+    }
+
+    .start-btn {
+      background: #4CAF50;
+      color: white;
+      font-weight: bold;
+      border: none;
+      margin-top: 20px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .start-btn:hover {
+      background: #388E3C;
+    }
+
+    .footer {
+      margin-top: 30px;
+      color: #777;
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+
+<audio autoplay loop>
+  <source src="theme.mp3" type="audio/mpeg">
+</audio>
+
+<div class="container">
+  <h1>Game Lobby</h1>
+  <div id="room-code" style="margin-bottom: 10px; font-weight: bold;"></div>
+
+  <div class="player-list" id="player-list">
+    <p>Loading players...</p>
+  </div>
+
+  <div class="chat-box">
+    <div class="chat-messages" id="chat-messages"></div>
+    <div class="chat-input">
+      <input type="text" id="chat-input" placeholder="Type a message..." />
+      <button onclick="sendMessage()">Send</button>
+    </div>
+  </div>
+
+  <button class="start-btn" id="start-button" onclick="startGame()" style="display: none;">🚀 Start Game</button>
+  <p id="waiting" style="margin-top: 20px;">Waiting for host to start the game...</p>
+</div>
+
+<div class="footer">
+  © 2025 AfterRoundOne – Vibes loading... 💥
+</div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"></script>
+<script>
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT_ID.appspot.com",
+    messagingSenderId: "YOUR_MSG_ID",
+    appId: "YOUR_APP_ID"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+  const name = localStorage.getItem("hostName") || localStorage.getItem("playerName");
+  const roomCode = localStorage.getItem("roomCode");
+
+  document.getElementById("room-code").textContent = `Room Code: ${roomCode}`;
+
+  const playerListEl = document.getElementById("player-list");
+  const chatMessagesEl = document.getElementById("chat-messages");
+  const startBtn = document.getElementById("start-button");
+  const waitingText = document.getElementById("waiting");
+
+  // Realtime players list
+  db.collection("rooms").doc(roomCode).collection("players")
+    .orderBy("joinedAt")
+    .onSnapshot(snapshot => {
+      playerListEl.innerHTML = "";
+      snapshot.forEach(doc => {
+        const p = doc.data();
+        const playerItem = document.createElement("div");
+        playerItem.className = "player";
+        playerItem.textContent = `${p.name} — 🎲 #${p.number}`;
+        playerListEl.appendChild(playerItem);
+      });
+    });
+
+  // Realtime chat messages
+  db.collection("rooms").doc(roomCode).collection("chat")
+    .orderBy("timestamp")
+    .onSnapshot(snapshot => {
+      chatMessagesEl.innerHTML = "";
+      snapshot.forEach(doc => {
+        const msg = doc.data();
+        const msgEl = document.createElement("div");
+        msgEl.textContent = `${msg.name}: ${msg.message}`;
+        chatMessagesEl.appendChild(msgEl);
+        chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+      });
+    });
+
+  async function sendMessage() {
+    const input = document.getElementById("chat-input");
+    const message = input.value.trim();
+    if (!message) return;
+
+    await db.collection("rooms").doc(roomCode).collection("chat").add({
+      name: name,
+      message: message,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    input.value = "";
+  }
+
+  // Show start button if host
+  db.collection("rooms").doc(roomCode).collection("players").doc(name).get()
+    .then(doc => {
+      const data = doc.data();
+      if (data && data.isHost) {
+        startBtn.style.display = "block";
+        waitingText.style.display = "none";
+      }
+    });
+
+  async function startGame() {
+    await db.collection("rooms").doc(roomCode).update({
+      started: true
+    });
+
+    window.location.href = "game.html";
+  }
+</script>
+
+</body>
+</html>

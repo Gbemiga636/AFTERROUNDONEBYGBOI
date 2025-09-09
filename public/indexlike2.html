@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AfterRoundOne</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --green: #4CAF50;
+      --brown: #8D6E63;
+      --cream: #FFFDE7;
+      --white: #FFFFFF;
+      --glass-bg: rgba(255, 255, 255, 0.15);
+      --border-glass: rgba(255, 255, 255, 0.3);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Fredoka', sans-serif;
+      background-color: var(--cream);
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* Loader */
+    #loader {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: var(--green);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      font-size: 1.5rem;
+      animation: fadeOut 1s 3s forwards;
+    }
+
+    #loader span {
+      font-size: 3rem;
+      animation: bounce 1s infinite alternate;
+    }
+
+    @keyframes bounce {
+      0% { transform: translateY(0); }
+      100% { transform: translateY(-20px); }
+    }
+
+    @keyframes fadeOut {
+      to { opacity: 0; visibility: hidden; }
+    }
+
+    /* Floating lights */
+    .light {
+      position: absolute;
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      filter: blur(60px);
+      z-index: 0;
+      opacity: 0.3;
+      animation: float 8s ease-in-out infinite alternate;
+    }
+
+    .light.green { background: var(--green); top: 10%; left: 5%; }
+    .light.brown { background: var(--brown); top: 70%; right: 10%; }
+    .light.white { background: #fff; bottom: 10%; left: 40%; }
+
+    @keyframes float {
+      0% { transform: translateY(0) translateX(0); }
+      100% { transform: translateY(-20px) translateX(20px); }
+    }
+
+    header {
+      text-align: center;
+      padding: 80px 20px 30px;
+      position: relative;
+      z-index: 2;
+    }
+
+    header img.logo {
+      width: 100px;
+      margin-bottom: 10px;
+      animation: popin 1.2s ease-out;
+    }
+
+    @keyframes popin {
+      from { transform: scale(0); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    header h1 {
+      font-size: 3.5rem;
+      color: var(--green);
+      text-shadow: 2px 2px var(--brown);
+      animation: fadeSlide 1s ease-in-out;
+    }
+
+    header p {
+      font-size: 1.2rem;
+      color: #5D4037;
+      margin-top: 10px;
+      animation: fadeSlide 1.3s ease-in-out;
+    }
+
+    @keyframes fadeSlide {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .buttons {
+      margin-top: 30px;
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      background: var(--brown);
+      color: white;
+      padding: 14px 35px;
+      border-radius: 30px;
+      font-weight: bold;
+      border: none;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: 0.3s;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+    }
+
+    .btn:hover {
+      background: var(--green);
+      box-shadow: 0 10px 25px rgba(76, 175, 80, 0.4);
+    }
+
+    section {
+      max-width: 900px;
+      margin: 60px auto;
+      padding: 25px 30px;
+      background: var(--glass-bg);
+      backdrop-filter: blur(12px);
+      border-radius: 20px;
+      box-shadow: 0 8px 18px rgba(0,0,0,0.08);
+      border: 1px solid var(--border-glass);
+      animation: fadeSlide 1s ease-in-out;
+    }
+
+    section h2 {
+      font-size: 2rem;
+      color: var(--green);
+      margin-bottom: 10px;
+    }
+
+    section p {
+      font-size: 1rem;
+      line-height: 1.7;
+      color: #333;
+    }
+
+    .gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      padding: 0 20px;
+      margin-top: 60px;
+      z-index: 1;
+      position: relative;
+    }
+
+    .gallery img {
+      width: 100%;
+      border-radius: 15px;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+      transition: transform 0.3s ease;
+    }
+
+    .gallery img:hover {
+      transform: scale(1.05);
+    }
+
+    footer {
+      text-align: center;
+      padding: 60px 20px 30px;
+      color: #888;
+      font-size: 0.9rem;
+    }
+
+    @media screen and (max-width: 600px) {
+      header h1 { font-size: 2.3rem; }
+      .btn { width: 100%; max-width: 260px; }
+      section { margin: 40px 10px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Floating Lights -->
+<div class="light green"></div>
+<div class="light brown"></div>
+<div class="light white"></div>
+
+<!-- Loader -->
+<div id="loader">
+  <span>🎲</span>
+  Loading AfterRoundOne...
+</div>
+
+<!-- Header -->
+<header>
+  <img src="https://via.placeholder.com/100x100?text=LOGO" alt="Logo" class="logo" />
+  <h1>AfterRoundOne</h1>
+  <p>The game where someone always loses — hilariously! 😆</p>
+  <div class="buttons">
+    <button class="btn" onclick="location.href='create.html'">Create Room</button>
+    <button class="btn" onclick="location.href='join.html'">Join Room</button>
+  </div>
+</header>
+
+<!-- How It Works Section -->
+<section>
+  <h2>How It Works</h2>
+  <p>
+    AfterRoundOne is a fast-paced, laugh-out-loud multiplayer game where players pick a number between 1–5 before the theme music ends. When the song stops, everyone’s number is revealed. If you’re the odd one out — you're OUT! 🫣 The game continues in rounds until just one person is left… and crowned the ultimate loser! 😵 It’s the perfect mix of childhood chaos, party fun, and digital mischief. Play online with your friends, shout, bluff, and giggle your way through.
+  </p>
+</section>
+
+<!-- About Us Section -->
+<section>
+  <h2>About Us</h2>
+  <p>
+    We’re a bunch of grown-up kids from the streets of Lagos, Ibadan, and Enugu who still remember the thrill of shouting “out!” during street games. AfterRoundOne was born from that same wild energy — when fun didn’t need screens, just laughter and imagination. We turned those memories into code so the chaos lives on… even if you’re sitting behind a screen. Whether you win or lose, we promise you’ll laugh — and remember the kid you used to be.
+  </p>
+</section>
+
+<!-- Gallery -->
+<div class="gallery">
+  <img src="https://via.placeholder.com/400x200?text=3D+Game+Scene+1" alt="3D Scene 1">
+  <img src="https://via.placeholder.com/400x200?text=3D+Game+Scene+2" alt="3D Scene 2">
+  <img src="https://via.placeholder.com/400x200?text=3D+Funny+Avatar" alt="3D Avatar">
+</div>
+
+<!-- Footer -->
+<footer>
+  © 2025 AfterRoundOne — Built for mischief, powered by GJDESIGNHUB 🎉
+</footer>
+<script>
+  window.addEventListener('DOMContentLoaded', () => {
+    const loader = document.getElementById('loader');
+
+    // After 3 seconds, hide the loader and animate page content
+    setTimeout(() => {
+      loader.style.display = 'none';
+
+      // Trigger animations for all elements with 'fade-in' class
+      document.querySelectorAll('.fade-in').forEach((el, index) => {
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(20px)';
+        el.style.transition = 'all 0.8s ease';
+        setTimeout(() => {
+          el.style.opacity = '1';
+          el.style.transform = 'translateY(0)';
+        }, index * 300);
+      });
+    }, 3000);
+  });
+</script>
+</body>
+</html>

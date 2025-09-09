@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Join Room – AfterRoundOne</title>
+  <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap" rel="stylesheet">
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <style>
+    body {
+      font-family: 'Fredoka', sans-serif;
+      background: linear-gradient(135deg, #FFFDE7, #F1F8E9);
+      margin: 0;
+      padding: 30px;
+      text-align: center;
+      transition: opacity 0.8s ease;
+    }
+    h1 {
+      font-family: 'Luckiest Guy', cursive;
+      font-size: 2.5rem;
+      color: #4CAF50;
+      margin-bottom: 20px;
+      text-shadow: 2px 2px #A1887F, 1px 1px #fff;
+    }
+    .container {
+      max-width: 600px;
+      margin: auto;
+      background: rgba(255,255,255,0.25);
+      backdrop-filter: blur(14px);
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: 0 12px 24px rgba(0,0,0,0.15);
+    }
+    input {
+      width: calc(100% - 20px);
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 1rem;
+      margin-bottom: 15px;
+    }
+    .number-select {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+      margin: 20px 0;
+    }
+    .num-btn {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: #4CAF50;
+      color: #fff;
+      font-size: 1.1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.2s, background 0.2s;
+    }
+    .num-btn.active { background: #8D6E63; }
+    .num-btn.disabled { background: #ccc; cursor: not-allowed; }
+    button {
+      margin-top: 20px;
+      background: #8D6E63;
+      color: white;
+      padding: 12px;
+      width: 100%;
+      border: none;
+      border-radius: 12px;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: box-shadow 0.2s, background 0.2s;
+    }
+    button:hover {
+      background: #4CAF50;
+      box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+    }
+    .selected-display { margin-top: 10px; font-weight: bold; }
+    #loader {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      background: rgba(255,255,255,0.9);
+      backdrop-filter: blur(6px);
+      z-index: 9999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+    .spinner {
+      border: 6px solid #f3f3f3;
+      border-top: 6px solid #4CAF50;
+      border-radius: 50%;
+      width: 60px; height: 60px;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { 0%{transform:rotate(0)}100%{transform:rotate(360deg)} }
+  </style>
+</head>
+<body>
+  <h1>Join Game Room 🎲</h1>
+  <div class="container">
+    <input type="text" id="player-name" placeholder="Your Name" />
+    <input type="text" id="room-code-input" placeholder="Room Code" />
+    <div class="number-select" id="number-buttons">
+      <button class="num-btn" data-number="1">1</button>
+      <button class="num-btn" data-number="2">2</button>
+      <button class="num-btn" data-number="3">3</button>
+      <button class="num-btn" data-number="4">4</button>
+      <button class="num-btn" data-number="5">5</button>
+      <button class="num-btn" data-number="6">6</button>
+      <button class="num-btn" data-number="7">7</button>
+      <button class="num-btn" data-number="8">8</button>
+      <button class="num-btn" data-number="9">9</button>
+      <button class="num-btn" data-number="10">10</button>
+    </div>
+    <div class="selected-display" id="selected-text">No number selected yet.</div>
+    <button onclick="joinRoom()">Join Room</button>
+  </div>
+
+  <div id="loader"><div class="spinner"></div></div>
+
+  <script>
+    const API_BASE = "http://localhost:5000/api";
+    const socket = io("http://localhost:5000");
+
+    let selectedNumber = null;
+    let roomCode = null;
+
+    // Select number
+    document.querySelectorAll(".num-btn").forEach(btn => {
+      btn.onclick = () => {
+        if (btn.classList.contains("disabled")) return;
+        document.querySelectorAll(".num-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        selectedNumber = parseInt(btn.dataset.number);
+        document.getElementById("selected-text").textContent = `You picked number ${selectedNumber}.`;
+      };
+    });
+
+    function showLoader(state) {
+      document.getElementById("loader").style.display = state ? "flex" : "none";
+    }
+
+    async function joinRoom() {
+  const name = document.getElementById("player-name").value.trim();
+  roomCode = document.getElementById("room-code-input").value.trim().toUpperCase();
+
+  if (!name || !roomCode || !selectedNumber) {
+    alert("Please fill all fields and pick a number.");
+    return;
+  }
+
+  showLoader(true);
+  try {
+    const res = await fetch(`${API_BASE}/join-room`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: roomCode, name, number: selectedNumber })
+    });
+    const data = await res.json();
+    showLoader(false);
+
+    if (data.error) {
+      alert(data.error);
+      return;
+    }
+
+    localStorage.setItem("playerName", name);
+    localStorage.setItem("playerNumber", selectedNumber);
+    localStorage.setItem("roomCode", roomCode);
+    localStorage.setItem("isHost", "false"); // mark as non-host
+
+    // ✅ join with code + name
+    socket.emit("join-room", { code: roomCode, name });
+
+    listenRealtime();
+
+    document.body.style.opacity = '0';
+    setTimeout(() => {
+      window.location.href = "lobby.html";
+    }, 800);
+
+  } catch (err) {
+    console.error("Join error:", err);
+    alert("Error joining room.");
+    showLoader(false);
+  }
+}
+
+    function updateDisabledButtons(takenNumbers) {
+      document.querySelectorAll(".num-btn").forEach(btn => {
+        const num = parseInt(btn.dataset.number);
+        if (takenNumbers.includes(num)) {
+          btn.classList.add("disabled");
+          if (selectedNumber === num) {
+            selectedNumber = null;
+            document.getElementById("selected-text").textContent = "No number selected yet.";
+          }
+        } else {
+          btn.classList.remove("disabled");
+        }
+      });
+    }
+
+    function listenRealtime() {
+  socket.on("update", async () => {
+    const res = await fetch(`${API_BASE}/room/${roomCode}/players`);
+    const players = await res.json();
+    const taken = players.map(p => p.number);
+    updateDisabledButtons(taken);
+  });
+
+  // ✅ handle canonical event too
+  socket.on("players-updated", (players) => {
+    const taken = players.map(p => p.number);
+    updateDisabledButtons(taken);
+  });
+}
+  </script>
+</body>
+</html>

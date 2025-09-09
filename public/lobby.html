@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Lobby – AfterRoundOne</title>
+  <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap" rel="stylesheet">
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <style>
+    body {
+      font-family: 'Fredoka', sans-serif;
+      background: linear-gradient(135deg, #FFFDE7, #F1F8E9);
+      margin: 0;
+      padding: 30px;
+      text-align: center;
+    }
+    h1 {
+      font-family: 'Luckiest Guy', cursive;
+      font-size: 2.5rem;
+      color: #4CAF50;
+      margin-bottom: 20px;
+      text-shadow: 2px 2px #A1887F, 1px 1px #fff;
+    }
+    .container {
+      max-width: 600px;
+      margin: auto;
+      background: rgba(255,255,255,0.25);
+      backdrop-filter: blur(14px);
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: 0 12px 24px rgba(0,0,0,0.15);
+    }
+    .player {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px;
+      background: #fff;
+      border-radius: 10px;
+      margin-bottom: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+    .host { font-weight: bold; color: #4CAF50; }
+    button {
+      margin-top: 20px;
+      background: #8D6E63;
+      color: white;
+      padding: 12px;
+      width: 100%;
+      border: none;
+      border-radius: 12px;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: box-shadow 0.2s, background 0.2s;
+    }
+    button:hover {
+      background: #4CAF50;
+      box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+    }
+  </style>
+</head>
+<body>
+  <h1>Lobby 🎉</h1>
+  <div class="container">
+    <h2>Room Code: <span id="room-code"></span></h2>
+    <div id="players-list"></div>
+    <button id="start-btn" style="display:none;" onclick="startGame()">Start Game</button>
+    <button onclick="leaveRoom()">Leave Room</button>
+  </div>
+
+  <script>
+    const API_BASE = "http://localhost:5000/api";
+    const socket = io("http://localhost:5000");
+
+    const roomCode = localStorage.getItem("roomCode");
+const myName = localStorage.getItem("playerName");   // fixed
+const myNumber = localStorage.getItem("playerNumber");
+
+    document.getElementById("room-code").textContent = roomCode;
+
+    socket.emit("join-room", { code: roomCode, name: myName });
+
+    async function fetchPlayers() {
+      const res = await fetch(`${API_BASE}/room/${roomCode}/players`);
+      const players = await res.json();
+      renderPlayers(players);
+    }
+
+    function renderPlayers(players) {
+      const container = document.getElementById("players-list");
+      container.innerHTML = "";
+      players.forEach(p => {
+        const div = document.createElement("div");
+        div.className = "player";
+        div.innerHTML = `
+          <span>${p.name} (Number ${p.number}) ${p.isHost ? "👑" : ""}</span>
+          <span class="${p.isHost ? "host" : ""}">${p.isHost ? "Host" : ""}</span>
+        `;
+        container.appendChild(div);
+      });
+
+      const host = players.find(p => p.isHost);
+      if (host && host.name === myName) {
+        document.getElementById("start-btn").style.display = "block";
+      }
+    }
+
+    async function startGame() {
+  await fetch(`${API_BASE}/room/${roomCode}/start`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: myName })   // prove requester is host
+  });
+}
+
+    async function leaveRoom() {
+      await fetch(`${API_BASE}/room/${roomCode}/leave`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: myName })
+      });
+      localStorage.clear();
+      location.href = "index.html";
+    }
+
+    socket.on("update", fetchPlayers);             // legacy support
+socket.on("players-updated", renderPlayers);   // new event from backend
+
+socket.on("game-started", () => {
+  alert("Game Started! 🎮");
+  location.href = "game.html";
+});
+
+    fetchPlayers();
+  </script>
+</body>
+</html>

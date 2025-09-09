@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Create Room – AfterRoundOne</title>
+  <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap" rel="stylesheet">
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <style>
+    :root {
+      --green: #4CAF50;
+      --brown: #8D6E63;
+      --cream: #FFFDE7;
+      --white: #FFFFFF;
+      --glass-bg: rgba(255, 255, 255, 0.25);
+    }
+
+    body {
+      font-family: 'Fredoka', sans-serif;
+      background: linear-gradient(135deg, #FFFDE7, #F1F8E9);
+      margin: 0;
+      padding: 30px;
+      text-align: center;
+      overflow-x: hidden;
+      transition: opacity 0.8s ease;
+    }
+
+    h1 {
+      font-family: 'Luckiest Guy', cursive;
+      font-size: 3rem;
+      color: #4CAF50;
+      margin-bottom: 20px;
+      text-shadow: 3px 3px #A1887F, 1px 1px #fff;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: auto;
+      background: var(--glass-bg);
+      backdrop-filter: blur(14px);
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 12px 24px rgba(0,0,0,0.15);
+    }
+
+    .info { margin-bottom: 20px; }
+    .info span { font-weight: bold; color: #4E342E; display: block; margin-bottom: 8px; }
+
+    .code-box {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #fff;
+      border-radius: 10px;
+      padding: 10px;
+      margin-bottom: 15px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+    }
+
+    .copy-btn { cursor: pointer; background: #eee; padding: 6px 10px; border-radius: 5px; }
+
+    .numbers {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+      margin: 20px 0;
+    }
+
+    .num-btn {
+      width: 50px; height: 50px;
+      border-radius: 50%;
+      background: var(--green);
+      color: #fff;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: transform 0.2s, background 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+
+    .num-btn:hover { transform: translateY(-2px); }
+    .num-btn.selected { background: var(--brown); }
+    .num-btn.disabled { background: #ccc; cursor: not-allowed; }
+
+    input {
+      width: calc(100% - 20px);
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 1rem;
+    }
+
+    button {
+      margin-top: 20px;
+      background: var(--brown);
+      color: white;
+      padding: 12px;
+      width: 100%;
+      border: none;
+      border-radius: 12px;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: box-shadow 0.2s, background 0.2s;
+    }
+
+    button:hover {
+      background: var(--green);
+      box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+    }
+
+    .footer {
+      margin-top: 30px;
+      font-size: 0.9rem;
+      color: #777;
+    }
+
+    #loader {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(6px);
+      z-index: 9999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .spinner {
+      border: 6px solid #f3f3f3;
+      border-top: 6px solid #4CAF50;
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <h1>Create Game Room 🎲</h1>
+  <div class="container">
+    <div class="info">
+      <span>Room Code:</span>
+      <div class="code-box">
+        <span id="room-code">---</span>
+        <span class="copy-btn" onclick="copyText('room-code')">📋 Copy</span>
+      </div>
+
+      <span>Join Link:</span>
+      <div class="code-box">
+        <span id="share-link">---</span>
+        <span class="copy-btn" onclick="copyText('share-link')">📋 Copy</span>
+      </div>
+    </div>
+
+    <input type="text" id="host-name" placeholder="Your Name" />
+
+    <div class="info"><span>Choose a number:</span></div>
+    <div class="numbers" id="number-selection"></div>
+
+    <button onclick="startRoom()">Create & Go to Lobby</button>
+  </div>
+
+  <div id="loader"><div class="spinner"></div></div>
+
+  <script>
+     const API_BASE = "/api";  // ✅ works locally & on Render
+  let socket;
+  try {
+    socket = io();  // ✅ same-origin socket connection
+    socket.on("connect", () => {
+      console.log("Socket connected:", socket.id);
+    });
+  } catch (err) {
+    console.error("Socket connection failed:", err);
+  }
+
+  const buttons = [];
+  let chosenNumber = null;
+  let roomCode = null;
+
+  // Create number buttons
+  const numberSelection = document.getElementById("number-selection");
+  for (let i = 1; i <= 10; i++) {
+    const btn = document.createElement("div");
+    btn.textContent = i;
+    btn.className = "num-btn";
+    btn.onclick = () => {
+      if (btn.classList.contains("disabled")) return;
+      buttons.forEach(b => b.classList.remove("selected"));
+      btn.classList.add("selected");
+      chosenNumber = i;
+    };
+    buttons.push(btn);
+    numberSelection.appendChild(btn);
+  }
+    function copyText(id) {
+      const text = document.getElementById(id).textContent;
+      navigator.clipboard.writeText(text).then(() => alert("Copied!"));
+    }
+
+    function showLoader(show) {
+      document.getElementById("loader").style.display = show ? "flex" : "none";
+    }
+
+    async function startRoom() {
+  const name = document.getElementById("host-name").value.trim();
+  if (!name || chosenNumber == null) {
+    alert("Enter your name and select a number.");
+    return;
+  }
+  showLoader(true);
+
+  const res = await fetch(`${API_BASE}/create-room`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, number: chosenNumber })
+  });
+  const data = await res.json();
+  showLoader(false);
+
+  if (data.error) {
+    alert(data.error);
+    return;
+  }
+
+  roomCode = data.code;
+  document.getElementById("room-code").textContent = roomCode;
+  document.getElementById("share-link").textContent = data.joinLink;
+
+  // Save host info
+  localStorage.setItem("playerName", name);
+  localStorage.setItem("playerNumber", chosenNumber);
+  localStorage.setItem("roomCode", roomCode);
+  localStorage.setItem("isHost", "true");
+
+  // Join room with name attached
+  socket.emit("join-room", { code: roomCode, name });
+
+  listenRealtime(roomCode);
+
+  setTimeout(() => location.href = "lobby.html", 800);
+}
+    function listenRealtime(code) {
+      socket.on("update", async () => {
+        const res = await fetch(`${API_BASE}/room/${code}/players`);
+        const players = await res.json();
+        const takenNumbers = players.map(p => p.number);
+        buttons.forEach((btn, i) => {
+          const num = i + 1;
+          if (takenNumbers.includes(num)) {
+            btn.classList.add("disabled");
+          } else {
+            btn.classList.remove("disabled");
+          }
+        });
+      });
+    }
+  </script>
+</body>
+</html>

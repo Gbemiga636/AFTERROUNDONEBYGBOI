@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Create Room – AfterRoundOne</title>
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --green: #4CAF50;
+      --brown: #8D6E63;
+      --cream: #FFFDE7;
+      --white: #FFFFFF;
+      --glass-bg: rgba(255, 255, 255, 0.25);
+    }
+
+    body {
+      font-family: 'Fredoka', sans-serif;
+      background: linear-gradient(135deg, #FFFDE7, #F1F8E9);
+      margin: 0;
+      padding: 30px;
+      text-align: center;
+      overflow-x: hidden;
+    }
+
+    h1 {
+  font-family: 'Luckiest Guy', cursive;
+  font-size: 3rem;
+  color: #4CAF50;
+  margin-bottom: 20px;
+  text-shadow: 3px 3px #A1887F, 1px 1px #fff;
+}
+
+    .container {
+      max-width: 600px;
+      margin: auto;
+      background: var(--glass-bg);
+      backdrop-filter: blur(14px);
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 12px 24px rgba(0,0,0,0.15);
+    }
+
+    .info { margin-bottom: 20px; }
+    .info span { font-weight: bold; color: #4E342E; display: block; margin-bottom: 8px; }
+
+    .code-box {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #fff;
+      border-radius: 10px;
+      padding: 10px;
+      margin-bottom: 15px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+    }
+
+    .copy-btn { cursor: pointer; background: #eee; padding: 6px 10px; border-radius: 5px; }
+
+    .numbers {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+      margin: 20px 0;
+    }
+
+    .num-btn {
+      width: 50px; height: 50px;
+      border-radius: 50%;
+      background: var(--green);
+      color: #fff;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: transform 0.2s, background 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+
+    .num-btn:hover { transform: translateY(-2px); }
+    .num-btn.selected { background: var(--brown); }
+    .num-btn.disabled { background: #ccc; cursor: not-allowed; }
+
+    input { width: calc(100% - 20px); padding: 10px; border-radius: 8px; border: 1px solid #ccc; font-size: 1rem; }
+
+    button {
+      margin-top: 20px;
+      background: var(--brown);
+      color: white;
+      padding: 12px;
+      width: 100%;
+      border: none;
+      border-radius: 12px;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: box-shadow 0.2s, background 0.2s;
+    }
+
+    button:hover {
+      background: var(--green);
+      box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+    }
+
+    .footer { margin-top: 30px; font-size: 0.9rem; color: #777; }
+  </style>
+</head>
+<body>
+
+  <h1>Create Game Room 🎲</h1>
+  <div class="container">
+
+    <div class="info">
+      <span>Room Code:</span>
+      <div class="code-box">
+        <span id="room-code">Generating...</span>
+        <span class="copy-btn" onclick="copyText('room-code')">📋 Copy</span>
+      </div>
+
+      <span>Join Link:</span>
+      <div class="code-box">
+        <span id="share-link">Generating...</span>
+        <span class="copy-btn" onclick="copyText('share-link')">📋 Copy</span>
+      </div>
+    </div>
+
+    <input type="text" id="host-name" placeholder="Your Name" />
+
+    <div class="info"><span>Choose a number:</span></div>
+    <div class="numbers" id="number-selection"></div>
+
+    <button onclick="startRoom()">Create & Go to Lobby</button>
+    <button id="start-game-btn" onclick="startGame()" disabled>🚀 Start Game</button>
+  </div>
+
+  <div class="footer">© 2025 AfterRoundOne — Built for mischief, powered by GJDESIGNHUB 🎉</div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+  <script>
+   const firebaseConfig = {
+    apiKey: "AIzaSyD5cQq8BXdPtUsmt8-CMy9zteUD_nofAew",
+    authDomain: "afterroundone-bd680.firebaseapp.com",
+    projectId: "afterroundone-bd680",
+    storageBucket: "afterroundone-bd680.firebasestorage.app",
+    messagingSenderId: "217648545359",
+    appId: "1:217648545359:web:0432b2b4df8c065982743a",
+    measurementId: "G-1DDXKZMMKF"
+  };
+    const db = firebase.firestore();
+
+    // ROOM CODE
+    const code = Array.from({length:6}, ()=>"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"[Math.floor(Math.random()*36)]).join("");
+    document.getElementById("room-code").textContent = code;
+    document.getElementById("share-link").textContent = `${location.origin}/join.html?code=${code}`;
+
+    function copyText(id) {
+      const text = document.getElementById(id).textContent;
+      navigator.clipboard.writeText(text)
+        .then(() => alert("Copied!"))
+        .catch(() => alert("Copy failed"));
+    }
+
+    // NUMBER SELECTION SETUP
+    const chosen = { host: null };
+    Array.from({length:10}, (_,i)=>{
+      const btn = document.createElement("div");
+      btn.textContent = i+1;
+      btn.className = "num-btn";
+      btn.onclick = () => {
+        if (btn.classList.contains("disabled")) return;
+        if (chosen.host === i+1) {
+          btn.classList.remove("selected");
+          chosen.host = null;
+        } else {
+          document.querySelectorAll(".num-btn").forEach(b=>b.classList.remove("selected"));
+          btn.classList.add("selected");
+          chosen.host = i+1;
+        }
+      };
+      document.getElementById("number-selection").appendChild(btn);
+    });
+
+    async function startRoom() {
+      const name = document.getElementById("host-name").value.trim();
+      const number = chosen.host;
+      if (!name || number===null) {
+        alert("Enter your name and select a number.");
+        return;
+      }
+
+      const roomRef = db.collection("rooms").doc(code);
+      await roomRef.set({ createdBy: name, started: false, round:1, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+      await roomRef.collection("players").doc(name).set({ name, number, isHost:true, status:"alive", joinedAt: firebase.firestore.FieldValue.serverTimestamp() });
+
+      localStorage.setItem("hostName", name);
+      localStorage.setItem("hostNumber", number);
+      localStorage.setItem("roomCode", code);
+
+      document.getElementById("start-game-btn").disabled = false;
+      document.body.style.opacity = '0';
+      setTimeout(()=> location.href="lobby.html", 800);
+    }
+
+    async function startGame() {
+      await db.collection("rooms").doc(code).update({ started:true });
+      location.href = "game.html";
+    }
+  </script>
+
+</body>
+</html>

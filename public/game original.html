@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AfterRoundOne – Game</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;700&family=Luckiest+Guy&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"></script>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Fredoka', sans-serif;
+      background: linear-gradient(to right, #E0F7FA, #FFF9C4);
+      text-align: center;
+    }
+
+    h1 {
+      font-family: 'Luckiest Guy', cursive;
+      font-size: 2.4rem;
+      color: #388E3C;
+      margin-top: 20px;
+      text-shadow: 1px 1px #8D6E63;
+    }
+
+    #game-container {
+      position: relative;
+      width: 100%;
+      height: 420px;
+      margin-top: 20px;
+    }
+
+    .player-avatar {
+      position: absolute;
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: #4CAF50;
+      color: white;
+      font-weight: bold;
+      font-size: 1.4rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      flex-direction: column;
+    }
+
+    .stored-number {
+      margin-top: 5px;
+      font-size: 0.8rem;
+      font-weight: bold;
+      color: #fff;
+      background: rgba(0,0,0,0.3);
+      padding: 2px 6px;
+      border-radius: 10px;
+      transform: scale(0);
+      opacity: 0;
+    }
+
+    .info-box {
+      margin: 20px auto;
+      max-width: 300px;
+      padding: 20px;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .number-select {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+
+    .num-btn {
+      padding: 12px 20px;
+      border: none;
+      border-radius: 10px;
+      background: #8D6E63;
+      color: white;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .num-btn.active {
+      background: #4CAF50;
+      transform: scale(1.1);
+    }
+
+    #start-round-btn {
+      margin-top: 20px;
+      padding: 12px 20px;
+      background: #4CAF50;
+      border: none;
+      color: white;
+      font-size: 1rem;
+      font-weight: bold;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
+    .results {
+      margin-top: 20px;
+      font-weight: bold;
+      font-size: 1rem;
+      padding: 10px;
+      background: #fff3cd;
+      border-radius: 10px;
+      max-width: 400px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    footer {
+      margin-top: 40px;
+      padding: 15px;
+      font-size: 0.85rem;
+      color: #666;
+    }
+
+    @media (max-width: 600px) {
+      .player-avatar {
+        width: 60px;
+        height: 60px;
+        font-size: 1rem;
+      }
+
+      .info-box {
+        width: 90%;
+      }
+
+      .num-btn {
+        flex: 1 1 30%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>AfterRoundOne Game 🎯</h1>
+  <div id="game-container"></div>
+
+  <div class="info-box">
+    <div><strong>Your Stored Number:</strong> <span id="stored-number">?</span></div>
+    <div><strong>Choose Your Number:</strong></div>
+    <div class="number-select" id="number-buttons"></div>
+    <div><strong>Time Left:</strong> <span id="countdown">10</span> seconds</div>
+  </div>
+
+  <button id="start-round-btn" onclick="startRound()">▶️ Start Next Round</button>
+  <div class="results" id="results"></div>
+  <footer>© 2025 AfterRoundOne – The Game of Wits & Luck 💥</footer>
+
+  <script>
+    // Firebase setup
+   const firebaseConfig = {
+    apiKey: "AIzaSyD5cQq8BXdPtUsmt8-CMy9zteUD_nofAew",
+    authDomain: "afterroundone-bd680.firebaseapp.com",
+    projectId: "afterroundone-bd680",
+    storageBucket: "afterroundone-bd680.firebasestorage.app",
+    messagingSenderId: "217648545359",
+    appId: "1:217648545359:web:0432b2b4df8c065982743a",
+    measurementId: "G-1DDXKZMMKF"
+  };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // Get user & room context
+    const playerName = localStorage.getItem("playerName") || "You";
+    const storedNumber = +localStorage.getItem("playerNumber") || 6;
+    const roomCode = localStorage.getItem("roomCode");
+    document.getElementById("stored-number").textContent = storedNumber;
+
+    let players = [];
+    let roundPicks = {};
+    let selectedNumber = null;
+    let roundTimer;
+    let countdown = 10;
+
+    // Subscribe to players list + stored numbers
+    db.collection("rooms").doc(roomCode).collection("players")
+      .orderBy("joinedAt")
+      .onSnapshot(snapshot => {
+        players = snapshot.docs.map(doc => doc.data());
+        initializeRound();
+      });
+
+    function initializeRound() {
+      // reset UI
+      roundPicks = {};
+      selectedNumber = null;
+      document.getElementById("results").innerHTML = "";
+
+      buildNumberButtons();
+      createCircleLayout();
+      document.getElementById("countdown").textContent = countdown = 10;
+    }
+
+    function buildNumberButtons() {
+      const container = document.getElementById("number-buttons");
+      container.innerHTML = "";
+      for (let i = 1; i <= 5; i++) {
+        const btn = document.createElement("button");
+        btn.textContent = i;
+        btn.className = "num-btn";
+        btn.onclick = () => {
+          document.querySelectorAll(".num-btn").forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+          selectedNumber = i;
+          roundPicks[playerName] = i;
+        };
+        container.appendChild(btn);
+      }
+    }
+
+    function createCircleLayout() {
+      const container = document.getElementById("game-container");
+      container.innerHTML = "";
+      const radius = 140;
+      const centerX = container.clientWidth / 2;
+      const centerY = container.clientHeight / 2;
+      const angleStep = (2 * Math.PI) / players.length;
+
+      players.forEach((p, idx) => {
+        const angle = idx * angleStep;
+        const x = centerX + radius * Math.cos(angle) - 40;
+        const y = centerY + radius * Math.sin(angle) - 40;
+
+        const avatar = document.createElement("div");
+        avatar.className = "player-avatar";
+        avatar.id = `avatar-${p.name}`;
+        avatar.style.left = `${x}px`;
+        avatar.style.top = `${y}px`;
+
+        const initials = document.createElement("div");
+        initials.textContent = getInitials(p.name);
+
+        const stored = document.createElement("div");
+        stored.className = "stored-number";
+        stored.textContent = `#${p.number}`;
+        gsap.to(stored, { scale: 1, opacity: 1, duration: 1, delay: 0.3 });
+
+        avatar.append(initials, stored);
+        document.getElementById("game-container").appendChild(avatar);
+      });
+    }
+
+    function getInitials(name) {
+      return name.split(" ").map(word => word[0]).join('').toUpperCase();
+    }
+
+    function startRound() {
+      // start countdown
+      countdown = 10;
+      document.getElementById("countdown").text = countdown;
+      clearInterval(roundTimer);
+      roundTimer = setInterval(() => {
+        countdown--;
+        document.getElementById("countdown").textContent = countdown;
+        if (count <= 0) {
+          clearInterval(roundTimer);
+          finalizeRound();
+        }
+      }, 1000);
+    }
+
+    function finalizeRound() {
+      // collect picks on server
+      db.collection("rooms").doc(roomCode).collection("rounds")
+        .add({
+          timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+          picks: roundPicks
+        });
+
+      listenForRound();
+    }
+
+    function listenForRound() {
+      db.collection("rooms").doc(roomCode)
+        .collection("rounds")
+        .orderBy("timestamp", "desc")
+        .limit(1)
+        .onSnapshot(snap => {
+          if (!snap.empty) {
+            const data = snap.docs[0].data();
+            displayResults(data.picks);
+          }
+        });
+    }
+
+    function displayResults(picks) {
+      // animate reveal
+      players.forEach(p => {
+        const pick = picks[p.name] || Math.ceil(Math.random() * 5);
+        const avatar = document.getElementById(`avatar-${p.name}`);
+        const num = document.createElement("div");
+        num.textContent = pick;
+        Object.assign(num.style, {
+          position: 'absolute',
+          top: '100%',
+          left: '50%',
+          transform: 'translate(-50%, 0)',
+          fontSize: '1.2rem',
+          color: '#000'
+        });
+        avatar.appendChild(num);
+        gsap.fromTo(num, { scale: 0 }, { scale: 1.4, duration: 1 });
+      });
+
+      // compute total & determine winners
+      const total = Object.values(picks).reduce((a,b) => a + b, 0);
+      const resultsEl = document.getElementById("results");
+      let text = `🎲 Total Sum: <strong>${total}</strong><br><br>`;
+
+      players.forEach(p => {
+        const got = picks[p.name] === total;
+        text += got
+          ? `✅ <strong>${p.name}</strong> qualified<br>`
+          : `❌ <strong>${p.name}</strong> not qualified<br>`;
+      });
+
+      resultsEl.innerHTML = text;
+    }
+
+    // initialize
+    initializeRound();
+  </script>
+</body>
+</html>

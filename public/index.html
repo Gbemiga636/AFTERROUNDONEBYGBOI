@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AfterRoundOne</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <style>
+    :root {
+      --green: #4CAF50;
+      --brown: #8D6E63;
+      --cream: #FFFDE7;
+      --white: #FFFFFF;
+      --glass-bg: rgba(255, 255, 255, 0.15);
+      --border-glass: rgba(255, 255, 255, 0.3);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Fredoka', sans-serif;
+      background-color: var(--cream);
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* Loader */
+    #loader {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: var(--green);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      font-size: 1.5rem;
+    }
+
+    #loader span {
+      font-size: 3rem;
+      animation: bounce 1s infinite alternate;
+    }
+
+    @keyframes bounce {
+      0% { transform: translateY(0); }
+      100% { transform: translateY(-20px); }
+    }
+
+    /* Floating lights */
+    .light {
+      position: absolute;
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      filter: blur(80px);
+      z-index: 0;
+      opacity: 0.8;
+      animation: float 8s ease-in-out infinite alternate;
+    }
+
+    .light.green { background: var(--green); top: 10%; left: 5%; }
+    .light.brown { background: var(--brown); top: 70%; right: 10%; }
+    .light.white { background: #fff; bottom: 10%; left: 40%; }
+
+    @keyframes float {
+      0% { transform: translateY(0) translateX(0); }
+      100% { transform: translateY(-20px) translateX(20px); }
+    }
+
+    .fade-in {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all 0.8s ease;
+    }
+
+    header {
+      text-align: center;
+      padding: 80px 20px 30px;
+      position: relative;
+      z-index: 2;
+    }
+
+    header img.logo {
+      width: 150px;
+      margin-bottom: 10px;
+      animation: popin 1.2s ease-out;
+    }
+
+    @keyframes popin {
+      from { transform: scale(0); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    header h1 {
+      font-size: 3.5rem;
+      color: var(--green);
+      text-shadow: 2px 2px var(--brown);
+    }
+
+    header p {
+      font-size: 1.2rem;
+      color: #5D4037;
+      margin-top: 10px;
+    }
+
+    .buttons {
+      margin-top: 30px;
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      background: var(--brown);
+      color: white;
+      padding: 14px 35px;
+      border-radius: 30px;
+      font-weight: bold;
+      border: none;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: 0.3s;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+    }
+
+    .btn:hover {
+      background: var(--green);
+      box-shadow: 0 10px 25px rgba(76, 175, 80, 0.4);
+    }
+
+    section {
+      max-width: 900px;
+      margin: 60px auto;
+      padding: 25px 30px;
+      background: var(--glass-bg);
+      backdrop-filter: blur(12px);
+      border-radius: 20px;
+      box-shadow: 0 8px 18px rgba(0,0,0,0.08);
+      border: 1px solid var(--border-glass);
+    }
+
+    section h2 {
+      font-size: 2rem;
+      color: var(--green);
+      margin-bottom: 10px;
+    }
+
+    section p {
+      font-size: 1rem;
+      line-height: 1.7;
+      color: #333;
+    }
+
+    .gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      padding: 0 20px;
+      margin-top: 60px;
+      z-index: 1;
+      position: relative;
+    }
+
+    .gallery img {
+      width: 100%;
+      border-radius: 15px;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+      transition: transform 0.3s ease;
+    }
+
+    .gallery img:hover {
+      transform: scale(1.05);
+    }
+
+    footer {
+      text-align: center;
+      padding: 60px 20px 30px;
+      color: #888;
+      font-size: 0.9rem;
+    }
+
+    @media screen and (max-width: 600px) {
+      header h1 { font-size: 2.3rem; }
+      .btn { width: 100%; max-width: 260px; }
+      section { margin: 40px 10px; }
+    }
+/* Gradient Background */
+.bg-gradient {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: radial-gradient(circle at 30% 30%, #c8facc 0%, #fffde7 40%, #fff 100%);
+  z-index: -10;
+  animation: backgroundShift 12s ease-in-out infinite alternate;
+}
+
+@keyframes backgroundShift {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
+}
+
+/* Floating Orbs for 3D playful look */
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(40px);
+  opacity: 0.5;
+  z-index: 0;
+  animation: floaty 6s ease-in-out infinite alternate;
+}
+
+.orb1 {
+  width: 180px;
+  height: 180px;
+  background: var(--green);
+  top: 20%;
+  left: 10%;
+  animation-delay: 0s;
+}
+
+.orb2 {
+  width: 150px;
+  height: 150px;
+  background: var(--brown);
+  bottom: 15%;
+  right: 8%;
+  animation-delay: 1.5s;
+}
+
+.orb3 {
+  width: 100px;
+  height: 100px;
+  background: var(--white);
+  bottom: 25%;
+  left: 45%;
+  animation-delay: 3s;
+}
+
+@keyframes floaty {
+  from { transform: translateY(0) scale(1); }
+  to { transform: translateY(-20px) scale(1.05); }
+}
+  </style>
+</head>
+<body>
+<!-- 3D Gradient Background Layer -->
+<div class="bg-gradient"></div>
+
+<!-- Floating Lights and 3D Orbs -->
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+<div class="orb orb3"></div>
+
+<!-- Floating Lights -->
+<div class="light green"></div>
+<div class="light brown"></div>
+<div class="light white"></div>
+
+<!-- Loader -->
+<div id="loader">
+  <span>🎲</span>
+  Loading AfterRoundOne...
+</div>
+
+<!-- Header -->
+<header class="fade-in">
+  <img src="logo.png" alt="Logo" class="logo" />
+  <h1>AfterRoundOne</h1>
+  <p>The game where someone always loses — hilariously! 😆</p>
+  <div class="buttons">
+   <button class="btn" onclick="showLoaderAndGo('join.html')">Join Room</button>
+   <button class="btn" onclick="showLoaderAndGo('create.html')">Create Room</button>
+  </div>
+</header>
+
+<!-- How It Works Section -->
+<section class="fade-in">
+  <h2>How It Works</h2>
+  <p>
+    AfterRoundOne is a fast-paced, laugh-out-loud multiplayer game where players pick a number between 1–5 before the theme music ends. When the song stops, everyone’s number is revealed. If you’re the odd one out — you're OUT! 🫣 The game continues in rounds until just one person is left… and crowned the ultimate loser! 😵 It’s the perfect mix of childhood chaos, party fun, and digital mischief. Play online with your friends, shout, bluff, and giggle your way through.
+  </p>
+</section>
+
+<!-- About Us Section -->
+<section class="fade-in">
+  <h2>About Us</h2>
+  <p>
+    We’re a bunch of grown-up kids from the streets of Lagos, Ibadan, and Enugu who still remember the thrill of shouting “out!” during street games. AfterRoundOne was born from that same wild energy — when fun didn’t need screens, just laughter and imagination. We turned those memories into code so the chaos lives on… even if you’re sitting behind a screen. Whether you win or lose, we promise you’ll laugh — and remember the kid you used to be.
+  </p>
+</section>
+
+<!-- Gallery -->
+<div class="gallery fade-in">
+  <img src="scene2.png" alt="3D Scene 1">
+  <img src="scene1.png" alt="3D Scene 2">
+  <img src="avatar.png" alt="3D Avatar">
+</div>
+
+<!-- Footer -->
+<footer class="fade-in">
+  © 2025 AfterRoundOne — Built for mischief, powered by GJDESIGNHUB 🎉
+</footer>
+
+<!-- Animations and Confetti Script -->
+<script>
+  window.addEventListener('DOMContentLoaded', () => {
+    const loader = document.getElementById('loader');
+
+    // After 3s, hide loader and animate elements
+    setTimeout(() => {
+      loader.style.display = 'none';
+
+      // Fade-in elements
+      document.querySelectorAll('.fade-in').forEach((el, i) => {
+        el.style.opacity = '1';
+        el.style.transform = 'translateY(0)';
+        el.style.transition = 'all 1s ease ' + (i * 0.3) + 's';
+      });
+
+      // Launch confetti
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 }
+      });
+
+      // Emoji rain 🎉🤣👾💥😂
+      const emojis = ['🎉', '🤣', '👾', '💥', '😂'];
+      for (let i = 0; i < 25; i++) {
+        const emoji = document.createElement('div');
+        emoji.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+        emoji.style.position = 'fixed';
+        emoji.style.left = Math.random() * 100 + 'vw';
+        emoji.style.top = '-2em';
+        emoji.style.fontSize = '2rem';
+        emoji.style.zIndex = 9999;
+        emoji.style.transition = 'transform 5s ease';
+        document.body.appendChild(emoji);
+        setTimeout(() => {
+          emoji.style.transform = `translateY(${window.innerHeight + 100}px) rotate(${Math.random() * 360}deg)`;
+        }, 100);
+        setTimeout(() => emoji.remove(), 5200);
+      }
+    }, 3000);
+  });
+</script>
+<script>
+  function showLoaderAndGo(page) {
+    const loader = document.getElementById('loader');
+    loader.style.display = 'flex'; // Show loader
+
+    // Optional: add bounce animation to emoji
+    loader.querySelector('span').style.animation = 'bounce 1s infinite alternate';
+
+    // After 2.5s, go to next page
+    setTimeout(() => {
+      window.location.href = page;
+    }, 2500);
+  }
+</script>
+<script>
+  function showLoaderAndGoBack(page) {
+    const loader = document.getElementById('loader');
+    loader.style.display = 'flex';
+    loader.querySelector('span').style.animation = 'bounce 1s infinite alternate';
+
+    setTimeout(() => {
+      window.location.href = page;
+    }, 2500); // Adjust time if needed
+  }
+</script>
+</body>
+</html>

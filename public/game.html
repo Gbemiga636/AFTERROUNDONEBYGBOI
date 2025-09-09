@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AfterRoundOne – Game</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;700&family=Luckiest+Guy&display=swap" rel="stylesheet">
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Fredoka', sans-serif;
+      background: linear-gradient(to right, #E0F7FA, #FFF9C4);
+      text-align: center;
+    }
+
+    h1 {
+      font-family: 'Luckiest Guy', cursive;
+      font-size: 2.4rem;
+      color: #388E3C;
+      margin-top: 20px;
+      text-shadow: 1px 1px #8D6E63;
+    }
+
+    #game-container {
+      position: relative;
+      width: 100%;
+      height: 420px;
+      margin-top: 20px;
+    }
+
+    .player-avatar {
+      position: absolute;
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: #4CAF50;
+      color: white;
+      font-weight: bold;
+      font-size: 1.4rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      flex-direction: column;
+    }
+
+    .stored-number {
+      margin-top: 5px;
+      font-size: 0.8rem;
+      font-weight: bold;
+      color: #fff;
+      background: rgba(0,0,0,0.3);
+      padding: 2px 6px;
+      border-radius: 10px;
+      transform: scale(0);
+      opacity: 0;
+    }
+
+    .info-box {
+      margin: 20px auto;
+      max-width: 300px;
+      padding: 20px;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .number-select {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+
+    .num-btn {
+      padding: 12px 20px;
+      border: none;
+      border-radius: 10px;
+      background: #8D6E63;
+      color: white;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .num-btn.active {
+      background: #4CAF50;
+      transform: scale(1.1);
+    }
+
+    #start-round-btn {
+      margin-top: 20px;
+      padding: 12px 20px;
+      background: #4CAF50;
+      border: none;
+      color: white;
+      font-size: 1rem;
+      font-weight: bold;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
+    .results {
+      margin-top: 20px;
+      font-weight: bold;
+      font-size: 1rem;
+      padding: 10px;
+      background: #fff3cd;
+      border-radius: 10px;
+      max-width: 400px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    footer {
+      margin-top: 40px;
+      padding: 15px;
+      font-size: 0.85rem;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <h1>AfterRoundOne Game 🎯</h1>
+
+  <div id="game-container"></div>
+
+  <div class="info-box">
+    <div><strong>Your Stored Number:</strong> <span id="stored-number">?</span></div>
+    <div><strong>Choose Your Number:</strong></div>
+    <div class="number-select" id="number-buttons"></div>
+    <div><strong>Time Left:</strong> <span id="countdown">10</span> seconds</div>
+  </div>
+
+  <button id="start-round-btn">▶️ Start Next Round</button>
+  <div class="results" id="results"></div>
+
+  <footer>© 2025 AfterRoundOne – The Game of Wits & Luck 💥</footer>
+
+<script>
+  const API_BASE = "http://localhost:5000/api";
+  const socket = io("http://localhost:5000");
+
+  const playerName = localStorage.getItem("playerName");
+  const storedNumber = parseInt(localStorage.getItem("playerNumber"));
+  const roomCode = localStorage.getItem("roomCode");
+
+  document.getElementById("stored-number").textContent = storedNumber;
+if (localStorage.getItem("isHost") !== "true") {
+  document.getElementById("start-round-btn").style.display = "none";
+}
+
+  let selectedNumber = null;
+  let roundTimer = null;
+let roundResultsBuffer = null;
+let eliminatedPlayers = new Set();
+
+
+  // --- UI helpers ---
+  function getInitials(name) {
+    return name.split(" ").map(n => n[0]).join("").toUpperCase();
+  }
+
+  function renderPlayers(players, qualified=[]) {
+  const container = document.getElementById("game-container");
+  container.innerHTML = "";
+  const radius = 140;
+  const centerX = container.clientWidth / 2;
+  const centerY = container.clientHeight / 2;
+  const angleStep = (2 * Math.PI) / players.length;
+
+  players.forEach((p, i) => {
+    const angle = i * angleStep;
+    const x = centerX + radius * Math.cos(angle) - 40;
+    const y = centerY + radius * Math.sin(angle) - 40;
+
+    const avatar = document.createElement("div");
+    avatar.className = "player-avatar";
+    avatar.style.left = `${x}px`;
+    avatar.style.top = `${y}px`;
+
+    // dim eliminated players permanently
+    if (eliminatedPlayers.has(p.name)) {
+      avatar.style.filter = "grayscale(100%)";
+      avatar.style.opacity = "0.4";
+    } else if (qualified.includes(p.name)) {
+      avatar.style.opacity = "0.5";
+    } else {
+      avatar.style.opacity = "1";
+    }
+
+    avatar.id = `avatar-${p.name}`;
+
+    const initials = document.createElement("div");
+    initials.textContent = getInitials(p.name);
+
+    const stored = document.createElement("div");
+    stored.className = "stored-number";
+    stored.textContent = `#${p.number}`;
+    stored.id = `stored-${p.name}`;
+
+    avatar.appendChild(initials);
+    avatar.appendChild(stored);
+    container.appendChild(avatar);
+
+    gsap.to(stored, { scale: 1, opacity: 1, duration: 1, delay: 0.2 });
+  });
+}
+
+  function buildNumberButtons() {
+    const container = document.getElementById("number-buttons");
+    container.innerHTML = "";
+    for (let i = 1; i <= 5; i++) {
+      const btn = document.createElement("button");
+      btn.textContent = i;
+      btn.className = "num-btn";
+      btn.onclick = () => {
+        document.querySelectorAll(".num-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        selectedNumber = i;
+        // send choice immediately to backend
+        socket.emit("play-number", { roomCode, name: playerName, number: selectedNumber });
+      };
+      container.appendChild(btn);
+    }
+  }
+
+  function startCountdown(duration = 10) {
+  let count = duration;
+  document.getElementById("countdown").textContent = count;
+
+  clearInterval(roundTimer);
+  roundTimer = setInterval(() => {
+    count--;
+    document.getElementById("countdown").textContent = count;
+
+    if (count <= 0) {
+      clearInterval(roundTimer);
+
+      // only animate if results already arrived
+      if (roundResultsBuffer) {
+        animateRoundResults(roundResultsBuffer);
+        roundResultsBuffer = null;
+      }
+    }
+  }, 1000);
+}
+
+
+function animateRoundResults(data) {
+  const { total, qualified, eliminated, players } = data;
+  const container = document.getElementById("game-container");
+  const resultsBox = document.getElementById("results");
+  resultsBox.innerHTML = "";
+
+  // animate each player’s chosen number
+  players.forEach((p, i) => {
+    const avatar = document.getElementById(`avatar-${p.name}`);
+    if (!avatar) return;
+
+    const numEl = document.createElement("div");
+    numEl.textContent = p.choice ? p.choice : "?";
+    numEl.style.position = "absolute";
+    numEl.style.fontSize = "1.4rem";
+    numEl.style.fontWeight = "bold";
+    numEl.style.color = "#000";
+    numEl.style.left = avatar.style.left;
+    numEl.style.top = avatar.style.top;
+    numEl.style.opacity = 0;
+
+    container.appendChild(numEl);
+
+    gsap.to(numEl, {
+      opacity: 1,
+      y: -40,
+      duration: 0.8,
+      delay: i * 0.3,
+      onComplete: () => {
+        gsap.to(numEl, { opacity: 0, duration: 0.6, delay: 0.5 });
+      }
+    });
+  });
+
+  // after animations, show results
+  setTimeout(() => {
+    resultsBox.innerHTML = `🎲 Total Sum: <strong>${total}</strong><br><br>`;
+
+    qualified.forEach(name => {
+      resultsBox.innerHTML += `✅ <strong>${name}</strong> qualified!<br>`;
+      confetti({ particleCount: 100, spread: 70, origin: { y: 0.5 } });
+    });
+
+   eliminated.forEach(name => {
+  resultsBox.innerHTML += `💀 <strong>${name}</strong> eliminated<br>`;
+  eliminatedPlayers.add(name); // keep them grayed out
+});
+
+    if (data.winner) {
+      resultsBox.innerHTML += `<br>🏆 <strong>${data.winner}</strong> is the WINNER!`;
+      confetti({ particleCount: 300, spread: 90, origin: { y: 0.5 } });
+      document.getElementById("start-round-btn").disabled = true;
+    }
+
+    renderPlayers(players, qualified);
+  }, players.length * 300 + 1500); // wait until all numbers animate
+}
+
+  // --- Socket listeners ---
+  // --- Socket listeners ---
+socket.emit("join-room", { code: roomCode, name: playerName });
+
+socket.on("game-state", (state) => {
+  renderPlayers(
+    state.players,
+    state.players.filter(p => p.qualified).map(p => p.name)
+  );
+});
+
+// Keep players list in sync when someone joins/leaves
+socket.on("players-updated", (players) => {
+  renderPlayers(players.filter(p => p.status === "alive"));
+});
+
+socket.on("round-start", (data) => {
+  document.getElementById("results").innerHTML = "";
+  selectedNumber = null;
+
+  if (!eliminatedPlayers.has(playerName)) {
+    buildNumberButtons();
+  } else {
+    document.getElementById("number-buttons").innerHTML =
+      "<em>You are eliminated. Watching only 👀</em>";
+  }
+
+  roundResultsBuffer = null; // reset
+  startCountdown(data.duration || 10);
+});
+
+ socket.on("round-results", (data) => {
+  // save results and let countdown trigger the animation
+  roundResultsBuffer = data;
+});
+
+  // --- Start next round (host only) ---
+  document.getElementById("start-round-btn").onclick = () => {
+    socket.emit("start-round", { code: roomCode });
+  };
+</script>
+</body>
+</html>

@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AfterRoundOne – Game</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;700&family=Luckiest+Guy&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Fredoka', sans-serif;
+      background: linear-gradient(to right, #E0F7FA, #FFF9C4);
+      text-align: center;
+    }
+
+    h1 {
+      font-family: 'Luckiest Guy', cursive;
+      font-size: 2.4rem;
+      color: #388E3C;
+      margin-top: 20px;
+      text-shadow: 1px 1px #8D6E63;
+    }
+
+    #game-container {
+      position: relative;
+      width: 100%;
+      height: 420px;
+      margin-top: 20px;
+    }
+
+    .player-avatar {
+      position: absolute;
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: #4CAF50;
+      color: white;
+      font-weight: bold;
+      font-size: 1.4rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      flex-direction: column;
+    }
+
+    .stored-number {
+      margin-top: 5px;
+      font-size: 0.8rem;
+      font-weight: bold;
+      color: #fff;
+      background: rgba(0,0,0,0.3);
+      padding: 2px 6px;
+      border-radius: 10px;
+      transform: scale(0);
+      opacity: 0;
+    }
+
+    .info-box {
+      margin: 20px auto;
+      max-width: 300px;
+      padding: 20px;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .number-select {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+
+    .num-btn {
+      padding: 12px 20px;
+      border: none;
+      border-radius: 10px;
+      background: #8D6E63;
+      color: white;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .num-btn.active {
+      background: #4CAF50;
+      transform: scale(1.1);
+    }
+
+    #start-round-btn {
+      margin-top: 20px;
+      padding: 12px 20px;
+      background: #4CAF50;
+      border: none;
+      color: white;
+      font-size: 1rem;
+      font-weight: bold;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
+    .results {
+      margin-top: 20px;
+      font-weight: bold;
+      font-size: 1rem;
+      padding: 10px;
+      background: #fff3cd;
+      border-radius: 10px;
+      max-width: 400px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    footer {
+      margin-top: 40px;
+      padding: 15px;
+      font-size: 0.85rem;
+      color: #666;
+    }
+
+    @media (max-width: 600px) {
+      .player-avatar {
+        width: 60px;
+        height: 60px;
+        font-size: 1rem;
+      }
+
+      .info-box {
+        width: 90%;
+      }
+
+      .num-btn {
+        flex: 1 1 30%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<h1>AfterRoundOne Game 🎯</h1>
+
+<div id="game-container"></div>
+
+<div class="info-box">
+  <div><strong>Your Stored Number:</strong> <span id="stored-number">?</span></div>
+  <div><strong>Choose Your Number:</strong></div>
+  <div class="number-select" id="number-buttons"></div>
+  <div><strong>Time Left:</strong> <span id="countdown">10</span> seconds</div>
+</div>
+
+<button id="start-round-btn" onclick="nextRound()">▶️ Start Next Round</button>
+
+<div class="results" id="results"></div>
+
+<footer>© 2025 AfterRoundOne – The Game of Wits & Luck 💥</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+<script>
+  const playerName = localStorage.getItem("playerName") || "You";
+  const storedNumber = parseInt(localStorage.getItem("playerNumber") || "6");
+  document.getElementById("stored-number").textContent = storedNumber;
+
+  const players = [
+    { name: playerName, stored: storedNumber, qualified: false },
+    { name: "Tobi", stored: 7, qualified: false },
+    { name: "Teni", stored: 9, qualified: false },
+    { name: "Dayo", stored: 10, qualified: false }
+  ];
+
+  let roundPlayers = [...players];
+  let selectedNumber = null;
+  let roundTimer;
+  let count = 10;
+
+  function createCircleLayout() {
+    const container = document.getElementById("game-container");
+    container.innerHTML = "";
+
+    const radius = 140;
+    const centerX = container.clientWidth / 2;
+    const centerY = container.clientHeight / 2;
+    const angleStep = (2 * Math.PI) / roundPlayers.length;
+
+    roundPlayers.forEach((player, i) => {
+      const angle = i * angleStep;
+      const x = centerX + radius * Math.cos(angle) - 40;
+      const y = centerY + radius * Math.sin(angle) - 40;
+
+      const avatar = document.createElement("div");
+      avatar.className = "player-avatar";
+      avatar.style.left = `${x}px`;
+      avatar.style.top = `${y}px`;
+      avatar.id = `avatar-${player.name}`;
+
+      const initials = document.createElement("div");
+      initials.textContent = getInitials(player.name);
+
+      const stored = document.createElement("div");
+      stored.className = "stored-number";
+      stored.textContent = `#${player.stored}`;
+      stored.id = `stored-${player.name}`;
+
+      avatar.appendChild(initials);
+      avatar.appendChild(stored);
+      container.appendChild(avatar);
+
+      // Animate stored number
+      gsap.to(stored, {scale: 1, opacity: 1, duration: 1, delay: 0.2});
+    });
+  }
+
+  function getInitials(name) {
+    return name.split(" ").map(n => n[0]).join("").toUpperCase();
+  }
+
+  function buildNumberButtons() {
+    const container = document.getElementById("number-buttons");
+    container.innerHTML = "";
+    for (let i = 1; i <= 5; i++) {
+      const btn = document.createElement("button");
+      btn.textContent = i;
+      btn.className = "num-btn";
+      btn.onclick = () => {
+        document.querySelectorAll(".num-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        selectedNumber = i;
+      };
+      container.appendChild(btn);
+    }
+  }
+
+  function startCountdown() {
+    clearInterval(roundTimer);
+    count = 10;
+    document.getElementById("countdown").textContent = count;
+
+    roundTimer = setInterval(() => {
+      count--;
+      document.getElementById("countdown").textContent = count;
+      if (count <= 0) {
+        clearInterval(roundTimer);
+        showRoundResults();
+      }
+    }, 1000);
+  }
+
+  function showRoundResults() {
+    roundPlayers.forEach(player => {
+      player.number = (player.name === playerName) ? selectedNumber || Math.floor(Math.random() * 5 + 1) : Math.floor(Math.random() * 5 + 1);
+    });
+
+    // Animate numbers
+    roundPlayers.forEach(player => {
+      const avatar = document.getElementById(`avatar-${player.name}`);
+      const num = document.createElement("div");
+      num.textContent = player.number;
+      num.style.position = "absolute";
+      num.style.top = "100%";
+      num.style.left = "50%";
+      num.style.transform = "translate(-50%, 0)";
+      num.style.color = "#000";
+      num.style.fontSize = "1.2rem";
+      avatar.appendChild(num);
+      gsap.fromTo(num, {scale: 0}, {scale: 1.4, duration: 1});
+    });
+
+    const total = roundPlayers.reduce((sum, p) => sum + p.number, 0);
+    const resultsBox = document.getElementById("results");
+
+    let resultText = `🎲 Total Sum: <strong>${total}</strong><br><br>`;
+
+    roundPlayers.forEach(p => {
+      if (p.stored === total) {
+        p.qualified = true;
+        resultText += `✅ <strong>${p.name}</strong> qualified<br>`;
+      } else {
+        resultText += `❌ <strong>${p.name}</strong> not qualified<br>`;
+      }
+    });
+
+    const remaining = roundPlayers.filter(p => !p.qualified);
+    if (remaining.length === 1) {
+      resultText += `<br>💀 <strong>${remaining[0].name}</strong> is out!<br>`;
+      roundPlayers = roundPlayers.filter(p => p !== remaining[0]);
+    } else {
+      roundPlayers = roundPlayers.filter(p => !p.qualified);
+    }
+
+    if (roundPlayers.length === 1) {
+      resultText += `<br>🏆 <strong>${roundPlayers[0].name}</strong> is the final WINNER!`;
+    }
+
+    resultsBox.innerHTML = resultText;
+  }
+
+  function nextRound() {
+    if (roundPlayers.length <= 1) return;
+    selectedNumber = null;
+    buildNumberButtons();
+    createCircleLayout();
+    document.getElementById("results").innerHTML = "";
+    startCountdown();
+  }
+
+  // Initialize game
+  buildNumberButtons();
+  createCircleLayout();
+  startCountdown();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,138 @@
+ <style>
+    :root {
+      --green: #4CAF50;
+      --brown: #8D6E63;
+      --cream: #FFFDE7;
+      --white: #FFFFFF;
+      --glass-bg: rgba(255, 255, 255, 0.25);
+    }
+
+    body {
+      font-family: 'Fredoka', sans-serif;
+      background: linear-gradient(135deg, #FFFDE7, #F1F8E9);
+      margin: 0;
+      padding: 30px;
+      text-align: center;
+      overflow-x: hidden;
+      transition: opacity 0.8s ease;
+    }
+
+    h1 {
+      font-family: 'Luckiest Guy', cursive;
+      font-size: 3rem;
+      color: #4CAF50;
+      margin-bottom: 20px;
+      text-shadow: 3px 3px #A1887F, 1px 1px #fff;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: auto;
+      background: var(--glass-bg);
+      backdrop-filter: blur(14px);
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 12px 24px rgba(0,0,0,0.15);
+    }
+
+    .info { margin-bottom: 20px; }
+    .info span { font-weight: bold; color: #4E342E; display: block; margin-bottom: 8px; }
+
+    .code-box {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #fff;
+      border-radius: 10px;
+      padding: 10px;
+      margin-bottom: 15px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+    }
+
+    .copy-btn { cursor: pointer; background: #eee; padding: 6px 10px; border-radius: 5px; }
+
+    .numbers {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+      margin: 20px 0;
+    }
+
+    .num-btn {
+      width: 50px; height: 50px;
+      border-radius: 50%;
+      background: var(--green);
+      color: #fff;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: transform 0.2s, background 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+
+    .num-btn:hover { transform: translateY(-2px); }
+    .num-btn.selected { background: var(--brown); }
+    .num-btn.disabled { background: #ccc; cursor: not-allowed; }
+
+    input {
+      width: calc(100% - 20px);
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 1rem;
+    }
+
+    button {
+      margin-top: 20px;
+      background: var(--brown);
+      color: white;
+      padding: 12px;
+      width: 100%;
+      border: none;
+      border-radius: 12px;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: box-shadow 0.2s, background 0.2s;
+    }
+
+    button:hover {
+      background: var(--green);
+      box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+    }
+
+    .footer {
+      margin-top: 30px;
+      font-size: 0.9rem;
+      color: #777;
+    }
+
+    #loader {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(6px);
+      z-index: 9999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .spinner {
+      border: 6px solid #f3f3f3;
+      border-top: 6px solid #4CAF50;
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>

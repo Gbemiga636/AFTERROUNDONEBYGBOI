@@ -1,0 +1,511 @@
+<!-- File: public/index.html -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Gesture / Nod / Eye Navigation (TensorFlow.js)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    :root {
+      --bg: #0b0f14; --fg: #e8f0fe; --muted:#90a4ae; --acc:#7c4dff; --ok:#00e676; --warn:#ffab00; --err:#ff5252;
+      --panel: #121821; --chip:#1b2430;
+    }
+    html,body { height:100%; }
+    body {
+      margin:0; background:var(--bg); color:var(--fg); font:14px/1.4 Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      display:grid; grid-template-columns: 1fr 360px; grid-template-rows: auto 1fr; gap:12px; padding:12px;
+    }
+    header { grid-column: 1 / -1; display:flex; align-items:center; justify-content:space-between; }
+    .title { font-weight:700; letter-spacing:.2px; }
+    .controls { display:flex; gap:8px; align-items:center; }
+    button, select, input[type="range"], .chip {
+      background:var(--chip); color:var(--fg); border:1px solid #2a3340; border-radius:10px; padding:8px 10px; cursor:pointer;
+    }
+    button.primary { background:var(--acc); color:white; border:0; }
+    button.danger { background:var(--err); color:white; border:0; }
+    #stage { position:relative; background:#000; border-radius:12px; overflow:hidden; }
+    video, canvas { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+    #panel { background:var(--panel); border:1px solid #1e2633; border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:12px; }
+    .row { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+    .row > * { flex:1; }
+    .section { border-top:1px solid #1e2633; padding-top:10px; }
+    .kvs { display:grid; grid-template-columns: 1fr auto; gap:6px; }
+    .log { height:140px; overflow:auto; background:#0d131a; border:1px solid #1e2633; border-radius:8px; padding:8px; font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .badge { padding:2px 6px; border-radius:999px; font-size:12px; background:#132030; color:#a6e3ff; border:1px solid #1e2937; }
+    .hint { color:var(--muted); font-size:12px; }
+    .grid2 { display:grid; grid-template-columns: 1fr 1fr; gap:8px; }
+    footer { grid-column: 1 / -1; color:var(--muted); font-size:12px; display:flex; gap:8px; align-items:center; }
+    .ok { color: var(--ok); } .warn { color: var(--warn); } .err{ color:var(--err); }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="title">🖐️ Gesture / 🤨 Head‑Nod / 😉 Eye Navigation — TensorFlow.js</div>
+    <div class="controls">
+      <button id="btnStart" class="primary">Start</button>
+      <button id="btnStop" class="danger" disabled>Stop</button>
+      <span id="status" class="badge">idle</span>
+    </div>
+  </header>
+
+  <main id="stage">
+    <video id="video" playsinline muted></video>
+    <canvas id="overlay"></canvas>
+  </main>
+
+  <aside id="panel" aria-label="Gesture settings">
+    <div class="row">
+      <label>Camera</label>
+      <select id="cameraSelect"></select>
+    </div>
+
+    <div class="section">
+      <div class="row">
+        <label>Sensitivity</label>
+        <div class="grid2">
+          <div>
+            <div class="kvs">
+              <span>Swipe (px/s)</span><input id="swipeThresh" type="range" min="300" max="1500" step="50" value="700" />
+              <span></span><span class="hint">Lower → more sensitive</span>
+            </div>
+          </div>
+          <div>
+            <div class="kvs">
+              <span>Nod/Shake (°/s)</span><input id="rotThresh" type="range" min="10" max="50" step="1" value="22" />
+              <span></span><span class="hint">Pitch/Yaw velocity threshold</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="kvs">
+          <span>Blink EAR</span><input id="earThresh" type="range" min="0.15" max="0.30" step="0.01" value="0.22" />
+          <span></span><span class="hint">Lower → easier blink</span>
+        </div>
+      </div>
+      <div class="row">
+        <label>Cooldown (ms)</label>
+        <input id="cooldown" type="range" min="400" max="2000" step="50" value="900" />
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="row"><strong>Map gestures → actions</strong></div>
+      <div class="grid2">
+        <div class="row"><span>Swipe Left</span>
+          <select id="mapSwipeLeft">
+            <option value="prev">Prev page/section</option>
+            <option value="back">History back</option>
+            <option value="scrollUp">Scroll up</option>
+            <option value="none">None</option>
+          </select>
+        </div>
+        <div class="row"><span>Swipe Right</span>
+          <select id="mapSwipeRight">
+            <option value="next">Next page/section</option>
+            <option value="forward">History forward</option>
+            <option value="scrollDown">Scroll down</option>
+            <option value="none">None</option>
+          </select>
+        </div>
+        <div class="row"><span>Nod</span>
+          <select id="mapNod">
+            <option value="scrollDown">Scroll down</option>
+            <option value="confirm">Click primary button</option>
+            <option value="none">None</option>
+          </select>
+        </div>
+        <div class="row"><span>Shake</span>
+          <select id="mapShake">
+            <option value="back">History back</option>
+            <option value="forward">History forward</option>
+            <option value="none">None</option>
+          </select>
+        </div>
+        <div class="row"><span>Left Wink</span>
+          <select id="mapLeftWink">
+            <option value="back">History back</option>
+            <option value="scrollUp">Scroll up</option>
+            <option value="none">None</option>
+          </select>
+        </div>
+        <div class="row"><span>Right Wink</span>
+          <select id="mapRightWink">
+            <option value="forward">History forward</option>
+            <option value="scrollDown">Scroll down</option>
+            <option value="none">None</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="row"><strong>Logs</strong><span id="fps" class="badge">0 fps</span></div>
+      <div id="log" class="log" aria-live="polite"></div>
+      <div class="hint">Tip: use good lighting; sit centered.</div>
+    </div>
+  </aside>
+
+  <footer>
+    <span>Toggle with <kbd>Space</kbd>. Pause when tab hidden. Data stays on device.</span>
+  </footer>
+
+  <!-- TFJS + Models (ESM, pinned) -->
+  <script type="module">
+    // Why: explicit pinned versions for stability; can bump later.
+    import * as tf from 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.16.0/dist/tf.min.js';
+    import * as handPoseDetection from 'https://cdn.jsdelivr.net/npm/@tensorflow-models/hand-pose-detection@2.0.1/dist/hand-pose-detection.esm.js';
+    import * as faceLandmarksDetection from 'https://cdn.jsdelivr.net/npm/@tensorflow-models/face-landmarks-detection@1.0.3/dist/face-landmarks-detection.esm.js';
+
+    // ---- DOM
+    const els = {
+      video: document.getElementById('video'),
+      overlay: document.getElementById('overlay'),
+      start: document.getElementById('btnStart'),
+      stop: document.getElementById('btnStop'),
+      status: document.getElementById('status'),
+      cameraSelect: document.getElementById('cameraSelect'),
+      log: document.getElementById('log'),
+      fps: document.getElementById('fps'),
+      swipeThresh: document.getElementById('swipeThresh'),
+      rotThresh: document.getElementById('rotThresh'),
+      earThresh: document.getElementById('earThresh'),
+      cooldown: document.getElementById('cooldown'),
+      maps: {
+        swipeL: document.getElementById('mapSwipeLeft'),
+        swipeR: document.getElementById('mapSwipeRight'),
+        nod: document.getElementById('mapNod'),
+        shake: document.getElementById('mapShake'),
+        winkL: document.getElementById('mapLeftWink'),
+        winkR: document.getElementById('mapRightWink'),
+      }
+    };
+    const ctx = els.overlay.getContext('2d', { alpha: true });
+
+    // ---- State
+    let stream = null;
+    let running = false;
+    let lastTs = 0;
+    let rafId = 0;
+    let fpsCounter = [];
+    let lastTrigger = { time: 0, type: '' };
+    let handDetector, faceDetector;
+
+    const BUFSIZE = 6; // smoothing window
+    const handBuf = [];
+    const headBuf = [];
+
+    // ---- Utils
+    const log = (m, level='') => {
+      const line = document.createElement('div');
+      line.textContent = `[${new Date().toLocaleTimeString()}] ${m}`;
+      if (level==='ok') line.className='ok'; else if (level==='warn') line.className='warn'; else if (level==='err') line.className='err';
+      els.log.prepend(line);
+      const max = 80; if (els.log.childElementCount > max) els.log.lastChild.remove();
+    };
+    const setStatus = (s) => els.status.textContent = s;
+
+    const sleep = (ms) => new Promise(r=>setTimeout(r, ms));
+
+    const median = (arr) => {
+      if (!arr.length) return 0;
+      const s = [...arr].sort((a,b)=>a-b); const m = Math.floor(s.length/2);
+      return s.length%2 ? s[m] : (s[m-1]+s[m])/2;
+    };
+
+    // ---- Camera
+    async function listCams() {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const cams = devices.filter(d => d.kind === 'videoinput');
+      els.cameraSelect.innerHTML = '';
+      cams.forEach((c, i) => {
+        const opt = document.createElement('option');
+        opt.value = c.deviceId; opt.textContent = c.label || `Camera ${i+1}`;
+        els.cameraSelect.appendChild(opt);
+      });
+    }
+
+    async function startCamera() {
+      const deviceId = els.cameraSelect.value || undefined;
+      const constraints = {
+        audio: false,
+        video: {
+          deviceId: deviceId ? { exact: deviceId } : undefined,
+          facingMode: 'user',
+          width: { ideal: 960 }, height: { ideal: 540 },
+          frameRate: { ideal: 30, max: 60 },
+        }
+      };
+      stream = await navigator.mediaDevices.getUserMedia(constraints);
+      els.video.srcObject = stream;
+      await els.video.play();
+      resizeCanvas();
+    }
+
+    function stopCamera() {
+      if (stream) {
+        stream.getTracks().forEach(t => t.stop());
+        stream = null;
+      }
+    }
+
+    function resizeCanvas() {
+      const rect = document.getElementById('stage').getBoundingClientRect();
+      els.overlay.width = rect.width;
+      els.overlay.height = rect.height;
+    }
+    window.addEventListener('resize', resizeCanvas);
+
+    // ---- Models
+    async function loadModels() {
+      // Why: MediaPipe Hands via TFJS backend is fast client-side.
+      handDetector = await handPoseDetection.createDetector(
+        handPoseDetection.SupportedModels.MediaPipeHands,
+        {
+          runtime: 'tfjs',
+          modelType: 'full',
+          maxHands: 1
+        }
+      );
+      faceDetector = await faceLandmarksDetection.load(
+        faceLandmarksDetection.SupportedPackages.mediapipeFacemesh,
+        { maxFaces: 1, shouldLoadIrisModel: true }
+      );
+    }
+
+    // ---- Geometry helpers
+    function ptAvg(landmarks) {
+      const n = landmarks.length;
+      let sx=0, sy=0;
+      for (const p of landmarks) { sx+=p.x; sy+=p.y; }
+      return { x: sx/n, y: sy/n };
+    }
+    function vel(pNow, pPrev, dt) {
+      if (!pPrev || dt<=0) return { vx:0, vy:0 };
+      return { vx: (pNow.x - pPrev.x)/dt, vy: (pNow.y - pPrev.y)/dt }; // px/ms
+    }
+    function deg(rad){ return rad * 180 / Math.PI; }
+
+    // EAR (Eye Aspect Ratio) using 6 points
+    function ear(p1,p2,p3,p4,p5,p6) {
+      const d = (a,b)=>Math.hypot(a.x-b.x, a.y-b.y);
+      const vert = (d(p2,p6) + d(p3,p5)) / 2;
+      const horiz = d(p1,p4);
+      return vert / (horiz || 1e-6);
+    }
+
+    // Head pose approx (yaw/pitch) from keypoints
+    function estimateHeadAngles(face) {
+      const k = face.keypoints; if (!k || k.length < 468) return { yaw:0, pitch:0 };
+      const lEye = k[33], rEye = k[263], nose = k[1], chin = k[152]; // canonical indices
+      const midEye = { x:(lEye.x+rEye.x)/2, y:(lEye.y+rEye.y)/2 };
+      const yaw = Math.atan2(rEye.x - lEye.x, rEye.y - lEye.y);        // left-right rotation
+      const pitch = Math.atan2(chin.y - midEye.y, chin.x - midEye.x);  // up-down tilt
+      return { yaw: deg(yaw), pitch: deg(pitch) };
+    }
+
+    // ---- Gesture detection
+    function detectSwipe(handCenters, dtMs) {
+      if (handCenters.length < 2) return null;
+      const pNow = handCenters[handCenters.length-1];
+      const pPrev = handCenters[handCenters.length-2];
+      const { vx } = vel(pNow, pPrev, dtMs);
+      const speedPxPerSec = Math.abs(vx) * 1000;
+      const thresh = Number(els.swipeThresh.value);
+      if (speedPxPerSec > thresh) return vx > 0 ? 'RIGHT' : 'LEFT';
+      return null;
+    }
+
+    function detectNodShake(headAngles, dtMs) {
+      if (headAngles.length < 2) return null;
+      const aNow = headAngles[headAngles.length-1];
+      const aPrev = headAngles[headAngles.length-2];
+      const vYaw = Math.abs(aNow.yaw - aPrev.yaw) / (dtMs/1000);
+      const vPitch = Math.abs(aNow.pitch - aPrev.pitch) / (dtMs/1000);
+      const thresh = Number(els.rotThresh.value);
+      if (vPitch > thresh) return 'NOD';
+      if (vYaw > thresh) return 'SHAKE';
+      return null;
+    }
+
+    function detectWinks(face) {
+      if (!face?.keypoints) return { left:false, right:false };
+      const k = face.keypoints;
+      // FaceMesh iris: eye contours
+      const L = {
+        p1: k[33], p2: k[160], p3: k[158], p4: k[133], p5: k[153], p6: k[144],
+      };
+      const R = {
+        p1: k[362], p2: k[385], p3: k[387], p4: k[263], p5: k[373], p6: k[380],
+      };
+      const eL = ear(L.p1,L.p2,L.p3,L.p4,L.p5,L.p6);
+      const eR = ear(R.p1,R.p2,R.p3,R.p4,R.p5,R.p6);
+      const thr = Number(els.earThresh.value);
+      return { left: eL < thr, right: eR < thr, eL, eR };
+    }
+
+    // ---- Action router
+    function doAction(kind) {
+      const now = performance.now();
+      const cd = Number(els.cooldown.value);
+      if (now - lastTrigger.time < cd && lastTrigger.type === kind) return; // debounce identical
+      lastTrigger = { time: now, type: kind };
+
+      const map = {
+        'SWIPE_LEFT': els.maps.swipeL.value,
+        'SWIPE_RIGHT': els.maps.swipeR.value,
+        'NOD': els.maps.nod.value,
+        'SHAKE': els.maps.shake.value,
+        'WINK_LEFT': els.maps.winkL.value,
+        'WINK_RIGHT': els.maps.winkR.value,
+      }[kind];
+
+      if (!map || map === 'none') return;
+      switch (map) {
+        case 'next': clickRel('next') || scrollByDelta(0, window.innerHeight * 0.8); break;
+        case 'prev': clickRel('prev') || scrollByDelta(0, -window.innerHeight * 0.8); break;
+        case 'back': history.length ? history.back() : null; break;
+        case 'forward': history.forward(); break;
+        case 'scrollDown': scrollByDelta(0, window.innerHeight * 0.6); break;
+        case 'scrollUp': scrollByDelta(0, -window.innerHeight * 0.6); break;
+        case 'confirm': clickPrimary(); break;
+      }
+      log(`Action: ${kind} → ${map}`, 'ok');
+    }
+
+    function clickRel(rel) {
+      const link = document.querySelector(`a[rel~="${rel}"], link[rel~="${rel}"]`);
+      if (link) { link.click(); return true; }
+      return false;
+    }
+    function clickPrimary() {
+      const btn = document.querySelector('button.primary, [type="submit"], [data-primary], .btn-primary, button');
+      if (btn) btn.click();
+    }
+    function scrollByDelta(x,y){ window.scrollBy({ left:x, top:y, behavior:'smooth' }); }
+
+    // ---- Drawing
+    function drawHand(hands) {
+      if (!hands?.length) return;
+      const h = hands[0];
+      ctx.strokeStyle = '#7c4dff'; ctx.lineWidth = 3;
+      ctx.fillStyle = '#7c4dff';
+      h.keypoints?.forEach(p => {
+        ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI*2); ctx.fill();
+      });
+    }
+    function drawFace(face, wink) {
+      if (!face) return;
+      ctx.strokeStyle = '#00e5ff'; ctx.lineWidth = 2;
+      const k = face.keypoints;
+      const irisIdx = [468, 469, 470, 471, 472];
+      irisIdx.forEach(i => {
+        const p = k[i];
+        if (p) { ctx.beginPath(); ctx.arc(p.x, p.y, 2, 0, Math.PI*2); ctx.stroke(); }
+      });
+      if (wink) {
+        ctx.fillStyle = 'rgba(0,230,118,0.6)';
+        ctx.font = '16px system-ui';
+        ctx.fillText(`EAR L:${wink.eL?.toFixed(2)} R:${wink.eR?.toFixed(2)}`, 10, 24);
+      }
+    }
+
+    // ---- Main loop
+    async function tick(ts=performance.now()) {
+      if (!running) return;
+      const dt = Math.max(1, ts - lastTs); lastTs = ts;
+
+      // FPS
+      fpsCounter.push(ts);
+      while (fpsCounter.length && ts - fpsCounter[0] > 1000) fpsCounter.shift();
+      els.fps.textContent = `${fpsCounter.length} fps`;
+
+      // Clear overlay
+      ctx.clearRect(0,0,els.overlay.width, els.overlay.height);
+
+      // Run models
+      const [hands, faces] = await Promise.allSettled([
+        handDetector.estimateHands(els.video, { flipHorizontal: true }),
+        faceDetector.estimateFaces({ input: els.video, flipHorizontal: true })
+      ]);
+
+      // HAND SWIPE
+      let swipe = null;
+      if (hands.status === 'fulfilled' && hands.value?.length) {
+        drawHand(hands.value);
+        const pts = hands.value[0].keypoints;
+        const center = ptAvg(pts);
+        handBuf.push(center); if (handBuf.length > BUFSIZE) handBuf.shift();
+        swipe = detectSwipe(handBuf, dt);
+        if (swipe === 'LEFT') doAction('SWIPE_LEFT');
+        if (swipe === 'RIGHT') doAction('SWIPE_RIGHT');
+      } else {
+        handBuf.length = 0;
+      }
+
+      // FACE / NOD / SHAKE / WINK
+      if (faces.status === 'fulfilled' && faces.value?.length) {
+        const face = faces.value[0];
+        const angles = estimateHeadAngles(face);
+        headBuf.push(angles); if (headBuf.length > BUFSIZE) headBuf.shift();
+        const motion = detectNodShake(headBuf, dt);
+        if (motion === 'NOD') doAction('NOD');
+        if (motion === 'SHAKE') doAction('SHAKE');
+
+        const wink = detectWinks(face);
+        drawFace(face, wink);
+
+        if (wink.left && !wink.right) doAction('WINK_LEFT');
+        if (wink.right && !wink.left) doAction('WINK_RIGHT');
+      } else {
+        headBuf.length = 0;
+      }
+
+      rafId = requestAnimationFrame(tick);
+    }
+
+    // ---- Lifecycle
+    async function start() {
+      try {
+        setStatus('requesting camera…');
+        await listCams();
+        await startCamera();
+        setStatus('loading models…');
+        await loadModels();
+        setStatus('running');
+        running = true; els.start.disabled = true; els.stop.disabled = false;
+        lastTs = performance.now();
+        rafId = requestAnimationFrame(tick);
+        log('Started.', 'ok');
+      } catch (err) {
+        console.error(err);
+        log(`Error: ${err.message}`, 'err');
+        setStatus('error');
+        stop();
+      }
+    }
+    function stop() {
+      running = false;
+      cancelAnimationFrame(rafId);
+      stopCamera();
+      els.start.disabled = false; els.stop.disabled = true;
+      setStatus('stopped');
+      log('Stopped.', 'warn');
+    }
+
+    // ---- UX bindings
+    els.start.addEventListener('click', start);
+    els.stop.addEventListener('click', stop);
+    document.addEventListener('visibilitychange', () => { if (document.hidden) stop(); });
+    window.addEventListener('keydown', (e)=>{ if (e.code==='Space'){ e.preventDefault(); running?stop():start(); }});
+
+    // Init
+    if (!('mediaDevices' in navigator)) {
+      setStatus('unsupported');
+      log('Error: navigator.mediaDevices is not available in this browser.', 'err');
+    } else {
+      listCams().catch(()=>{});
+    }
+  </script>
+</body>
+</html>
