@@ -381,14 +381,13 @@ io.on("connection", (socket) => {
 
       state.status = "playing";
       const duration = 10;
-      state.roundEndAt = Date.now() + duration * 1000;
+state.roundEndAt = Date.now() + duration * 1000;
 
-      if (state.timer) {
-        clearTimeout(state.timer);
-        state.timer = null;
-      }
-
-      io.to(code).emit("round-start", { round: state.round, duration });
+io.to(code).emit("round-start", { 
+  round: state.round, 
+  duration, 
+  roundEndAt: state.roundEndAt 
+});
 
       state.timer = setTimeout(() => {
         resolveRound(code).catch(err => console.error("resolveRound timer error:", err));
