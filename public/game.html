@@ -144,7 +144,6 @@
 <script>
   const API_BASE = "/api";
 const socket = io();
-
   const playerName = localStorage.getItem("playerName");
   const storedNumber = parseInt(localStorage.getItem("playerNumber"));
   const roomCode = localStorage.getItem("roomCode");
@@ -229,25 +228,21 @@ let eliminatedPlayers = new Set();
     }
   }
 
-  function startCountdown(duration = 10) {
-  let count = duration;
-  document.getElementById("countdown").textContent = count;
-
+  function startCountdown(roundEndAt) {
   clearInterval(roundTimer);
+
   roundTimer = setInterval(() => {
-    count--;
-    document.getElementById("countdown").textContent = count;
+    const remaining = Math.ceil((roundEndAt - Date.now()) / 1000);
+    document.getElementById("countdown").textContent = remaining;
 
-    if (count <= 0) {
+    if (remaining <= 0) {
       clearInterval(roundTimer);
-
-      // only animate if results already arrived
       if (roundResultsBuffer) {
         animateRoundResults(roundResultsBuffer);
         roundResultsBuffer = null;
       }
     }
-  }, 1000);
+  }, 250); // check 4 times/sec for smoother sync
 }
 
 
@@ -336,8 +331,8 @@ socket.on("round-start", (data) => {
       "<em>You are eliminated. Watching only 👀</em>";
   }
 
-  roundResultsBuffer = null; // reset
-  startCountdown(data.duration || 10);
+  roundResultsBuffer = null;
+  startCountdown(data.roundEndAt); // use server timestamp
 });
 
  socket.on("round-results", (data) => {
