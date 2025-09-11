@@ -69,8 +69,8 @@
   </div>
 
   <script>
-    const API_BASE = "http://localhost:5000/api";
-    const socket = io("http://localhost:5000");
+    const API_BASE = "/api";
+const socket = io();
 
     const roomCode = localStorage.getItem("roomCode");
 const myName = localStorage.getItem("playerName");   // fixed
