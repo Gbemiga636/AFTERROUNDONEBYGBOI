@@ -142,8 +142,8 @@
   <footer>© 2025 AfterRoundOne – The Game of Wits & Luck 💥</footer>
 
 <script>
-  const API_BASE = "http://localhost:5000/api";
-  const socket = io("http://localhost:5000");
+  const API_BASE = "/api";
+const socket = io();
 
   const playerName = localStorage.getItem("playerName");
   const storedNumber = parseInt(localStorage.getItem("playerNumber"));
