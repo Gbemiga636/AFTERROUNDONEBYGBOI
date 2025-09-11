@@ -122,8 +122,8 @@
   <div id="loader"><div class="spinner"></div></div>
 
   <script>
-    const API_BASE = "http://localhost:5000/api";
-    const socket = io("http://localhost:5000");
+    const API_BASE = "/api";
+const socket = io();
 
     let selectedNumber = null;
     let roomCode = null;
