@@ -231,9 +231,14 @@ let eliminatedPlayers = new Set();
   function startCountdown(roundEndAt) {
   clearInterval(roundTimer);
 
+  // Normalize: if it's in seconds, convert to ms
+  if (roundEndAt < 1e12) {
+    roundEndAt *= 1000;
+  }
+
   roundTimer = setInterval(() => {
     const remaining = Math.ceil((roundEndAt - Date.now()) / 1000);
-    document.getElementById("countdown").textContent = remaining;
+    document.getElementById("countdown").textContent = Math.max(0, remaining);
 
     if (remaining <= 0) {
       clearInterval(roundTimer);
@@ -242,9 +247,8 @@ let eliminatedPlayers = new Set();
         roundResultsBuffer = null;
       }
     }
-  }, 250); // check 4 times/sec for smoother sync
+  }, 250);
 }
-
 
 function animateRoundResults(data) {
   const { total, qualified, eliminated, players } = data;
