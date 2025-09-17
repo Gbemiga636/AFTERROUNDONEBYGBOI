@@ -164,49 +164,62 @@ let eliminatedPlayers = new Set();
     return name.split(" ").map(n => n[0]).join("").toUpperCase();
   }
 
-  function renderPlayers(players, qualified=[]) {
+  function renderPlayers(players, qualified = []) {
   const container = document.getElementById("game-container");
-  container.innerHTML = "";
-  const radius = 140;
-  const centerX = container.clientWidth / 2;
-  const centerY = container.clientHeight / 2;
-  const angleStep = (2 * Math.PI) / players.length;
 
-  players.forEach((p, i) => {
-    const angle = i * angleStep;
-    const x = centerX + radius * Math.cos(angle) - 40;
-    const y = centerY + radius * Math.sin(angle) - 40;
+  // Update or create avatars
+  players.forEach((p) => {
+    let avatar = document.getElementById(`avatar-${p.name}`);
+    if (!avatar) {
+      avatar = document.createElement("div");
+      avatar.className = "player-avatar";
+      avatar.id = `avatar-${p.name}`;
 
-    const avatar = document.createElement("div");
-    avatar.className = "player-avatar";
-    avatar.style.left = `${x}px`;
-    avatar.style.top = `${y}px`;
+      const initials = document.createElement("div");
+      initials.textContent = getInitials(p.name);
 
-    // dim eliminated players permanently
+      const stored = document.createElement("div");
+      stored.className = "stored-number";
+      stored.textContent = `#${p.number}`;
+      stored.id = `stored-${p.name}`;
+
+      avatar.appendChild(initials);
+      avatar.appendChild(stored);
+      container.appendChild(avatar);
+
+      gsap.to(stored, { scale: 1, opacity: 1, duration: 1, delay: 0.2 });
+    }
+
+    // Layout: position in circle based on current player list
+    const radius = 140;
+    const centerX = container.clientWidth / 2;
+    const centerY = container.clientHeight / 2;
+    const angleStep = (2 * Math.PI) / players.length;
+    const index = players.findIndex((pl) => pl.name === p.name);
+    const angle = index * angleStep;
+
+    avatar.style.left = `${centerX + radius * Math.cos(angle) - 40}px`;
+    avatar.style.top = `${centerY + radius * Math.sin(angle) - 40}px`;
+
+    // State: eliminated vs qualified vs active
     if (eliminatedPlayers.has(p.name)) {
       avatar.style.filter = "grayscale(100%)";
       avatar.style.opacity = "0.4";
     } else if (qualified.includes(p.name)) {
+      avatar.style.filter = "none";
       avatar.style.opacity = "0.5";
     } else {
+      avatar.style.filter = "none";
       avatar.style.opacity = "1";
     }
+  });
 
-    avatar.id = `avatar-${p.name}`;
-
-    const initials = document.createElement("div");
-    initials.textContent = getInitials(p.name);
-
-    const stored = document.createElement("div");
-    stored.className = "stored-number";
-    stored.textContent = `#${p.number}`;
-    stored.id = `stored-${p.name}`;
-
-    avatar.appendChild(initials);
-    avatar.appendChild(stored);
-    container.appendChild(avatar);
-
-    gsap.to(stored, { scale: 1, opacity: 1, duration: 1, delay: 0.2 });
+  // Remove avatars not in players list (clean up left-overs)
+  const currentIds = new Set(players.map((p) => `avatar-${p.name}`));
+  Array.from(container.children).forEach((child) => {
+    if (!currentIds.has(child.id)) {
+      child.remove();
+    }
   });
 }
 
